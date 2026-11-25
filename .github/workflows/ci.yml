@@ -72,14 +72,18 @@ jobs:
       - name: Version et erreur d'utilisation
         shell: pwsh
         run: |
+          # Les codes de sortie non nuls sont attendus et vérifiés à la main.
+          $PSNativeCommandUseErrorActionPreference = $false
           $exe = "./dist/jalon-windows-amd64.exe"
           & $exe version
           if ($LASTEXITCODE -ne 0) { exit 1 }
           & $exe --lang en --no-history --format pdf example.invalid
           if ($LASTEXITCODE -ne 3) { Write-Error "code $LASTEXITCODE au lieu de 3"; exit 1 }
+          exit 0
       - name: Diagnostic sur 127.0.0.1 et rapports
         shell: pwsh
         run: |
+          $PSNativeCommandUseErrorActionPreference = $false
           $exe = "./dist/jalon-windows-amd64.exe"
           $data = "$env:RUNNER_TEMP\jalon-data"
           $srv = Start-Process -FilePath python -ArgumentList "-m","http.server","8765","--bind","127.0.0.1" -PassThru -NoNewWindow
@@ -96,6 +100,7 @@ jobs:
           if (-not (Test-Path "$data\config.yaml")) { Write-Error "config.yaml absent"; exit 1 }
           & $exe --data $data history
           if ($LASTEXITCODE -ne 0) { exit 1 }
+          exit 0
       - name: Interface web (démarrage et page d'accueil)
         shell: pwsh
         run: |
