@@ -30,7 +30,18 @@ import (
 )
 
 func main() {
-	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+	args := os.Args[1:]
+	dc := doubleClicked()
+	if dc && len(args) == 0 {
+		// Double clic sous Windows : sans cible, on ouvre l'interface web
+		// plutôt que d'afficher l'aide dans une fenêtre qui se referme.
+		args = []string{"--web"}
+	}
+	code := run(args, os.Stdout, os.Stderr)
+	if dc && code != 0 {
+		pause(i18n.T(langFromArgs(args), "cli.press_enter"))
+	}
+	os.Exit(code)
 }
 
 // options de la ligne de commande.

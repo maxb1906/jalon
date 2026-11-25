@@ -111,6 +111,7 @@ Options:`},
 	"flag.no-color":       {"sans couleurs", "no colors"},
 	"flag.version":        {"afficher la version", "print version"},
 
+	"cli.press_enter":       {"Appuyez sur Entrée pour fermer cette fenêtre…", "Press Enter to close this window…"},
 	"cli.bad_lang":          {"langue inconnue %s (fr ou en)", "unknown language %s (fr or en)"},
 	"cli.bad_trace_mode":    {"mode de traceroute inconnu %s (icmp, tcp, auto)", "unknown traceroute mode %s (icmp, tcp, auto)"},
 	"cli.bad_proto":         {"protocole inconnu %s (%s)", "unknown protocol %s (%s)"},

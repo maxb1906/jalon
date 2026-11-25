@@ -29,6 +29,8 @@ scripts/build.sh 1.0.0               # les 6 plateformes dans dist/, sans cgo
 
 ## Utilisation
 
+**Sous Windows, un double-clic sur `jalon.exe` ouvre l'interface web** dans le navigateur (la fenêtre noire doit rester ouverte pendant l'utilisation). Pour la ligne de commande, ouvrir un terminal (PowerShell ou `cmd`) dans le dossier de l'exe :
+
 ```sh
 jalon https://exemple.be
 jalon smtp://mail.exemple.be imaps://mail.exemple.be 10.0.0.5:3389
