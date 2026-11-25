@@ -3,3 +3,6 @@
 /dist/
 /jalon-history/
 *.test
+/jalon-*.html
+/jalon-*.md
+/jalon-*.json

@@ -1,6 +1,6 @@
 # Jalon — Diagnostic de connectivité et traceroute applicatif
 
-> **Statut : cadrage terminé, développement pas commencé.**
+> **Statut : v1 développée (jalons 1 à 17 terminés), en attente de validation avant publication.**
 > Même famille qu'[[Arpent]] (audit réseau) et [[Aplomb]] (audit Windows) : exe portable, lecture seule, rapports exportables.
 > Ce fichier consigne tous les choix et sert de suivi d'implémentation pour Claude Code.
 
@@ -190,23 +190,29 @@ internal/i18n/        fr, en
 ```
 
 ## 6. Jalons de développement
-1. [ ] Squelette CLI + moteur de cascade + bus d'événements + rapport JSON
-2. [ ] Environnement local + détection des droits
-3. [ ] DNS comparé + interception DNS + NXDOMAIN
-4. [ ] TCP (v4/v6) + TLS (chaîne, double validation, interception)
-5. [ ] HTTP 1.1/2 + décomposition des temps
-6. [ ] HTTP/3 (Alt-Svc + QUIC)
-7. [ ] Sondes par protocole : SMTP, IMAP, POP3, puis SSH, RDP, LDAP, FTP, bannière générique
-8. [ ] Portail captif + heuristiques de proxy transparent
-9. [ ] Traceroute ICMP (3 OS) puis TCP SYN (raw / Npcap)
-10. [ ] Moteur de règles + verdict + résumé ticket
-11. [ ] Multi-cible
-12. [ ] Historique + comparaison + `history` / `diff`
-13. [ ] TUI (cascade + MTR live)
-14. [ ] UI web locale
-15. [ ] Rapports HTML / Markdown
-16. [ ] i18n FR/EN complète
-17. [ ] Builds Windows / Linux / macOS (amd64 + arm64), release GitHub, README
+1. [x] Squelette CLI + moteur de cascade + bus d'événements + rapport JSON
+2. [x] Environnement local + détection des droits
+3. [x] DNS comparé + interception DNS + NXDOMAIN
+4. [x] TCP (v4/v6) + TLS (chaîne, double validation, interception)
+5. [x] HTTP 1.1/2 + décomposition des temps
+6. [x] HTTP/3 (Alt-Svc + QUIC)
+7. [x] Sondes par protocole : SMTP, IMAP, POP3, puis SSH, RDP, LDAP, FTP, bannière générique
+8. [x] Portail captif + heuristiques de proxy transparent
+9. [x] Traceroute ICMP (3 OS) puis TCP SYN (raw / Npcap)
+10. [x] Moteur de règles + verdict + résumé ticket
+11. [x] Multi-cible
+12. [x] Historique + comparaison + `history` / `diff`
+13. [x] TUI (cascade + MTR live)
+14. [x] UI web locale
+15. [x] Rapports HTML / Markdown
+16. [x] i18n FR/EN complète
+17. [x] Builds Windows / Linux / macOS (amd64 + arm64), release GitHub, README
+
+### Écarts et précisions d'implémentation
+- **TCP SYN par saut sous Windows** : implémenté sans Npcap, par `connect()` avec TTL réduit + socket ICMP raw (droits administrateur). Npcap n'est pas requis ; sa présence est seulement détectée et affichée. À valider sur une vraie machine Windows (pare-feu Windows et réception des « TTL expiré »).
+- **Traceroute ICMPv6 sous Windows** : non pris en charge en v1 (IPv4 via `IcmpSendEcho`) ; le mode est affiché « non disponible ».
+- **TTL du SYN-ACK** (heuristique proxy transparent) : Linux en root / `CAP_NET_RAW` uniquement ; ailleurs, signalé comme non disponible.
+- **Proxy configuré** : signalé dans le rapport ; les tests HTTP se font en connexion directe.
 
 ## 7. Risques
 - Faux positifs du traceroute (routeurs qui limitent l'ICMP) → le verdict raisonne sur la propagation de la perte, pas sur un saut isolé

@@ -1,0 +1,18 @@
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+nav{display:flex;gap:6px;align-items:center}
+button,select,input,textarea{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+textarea{width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;resize:vertical}
+button{cursor:pointer}button:disabled{opacity:.5;cursor:default}
+button.primary{background:var(--info);border-color:var(--info);color:#fff;font-weight:600}
+.tab.on{border-color:var(--info);color:var(--info)}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.row label{display:flex;gap:6px;align-items:center}.chk{gap:4px}
+label[for=targets]{font-weight:600;display:block;margin-bottom:6px}
+.hidden{display:none!important}
+.step{display:grid;grid-template-columns:1.4em 13em 1fr;gap:6px;padding:4px 0;border-bottom:1px solid var(--line)}
+.step:last-child{border-bottom:0}.step .notes{grid-column:3}
+.running{color:var(--mut);font-style:italic}
+.spin{display:inline-block;animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+a{color:var(--info);cursor:pointer}
+.foot{margin-top:24px;font-size:12px}
+.hops{font-size:13px}.hops td{padding:3px 6px}

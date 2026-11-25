@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="{{.Lang}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{.Title}}</title>
+<style>{{.CSS}}</style>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body data-token="{{.Token}}" data-lang="{{.Lang}}" data-version="{{.Version}}">
+<main>
+  <header class="top">
+    <div><h1>Jalon <span class="mut" id="ver"></span></h1><div class="mut" id="subtitle"></div></div>
+    <nav>
+      <button class="tab on" data-view="run" id="tab-run"></button>
+      <button class="tab" data-view="history" id="tab-history"></button>
+      <select id="lang"><option value="fr">FR</option><option value="en">EN</option></select>
+    </nav>
+  </header>
+
+  <section id="view-run">
+    <div class="card">
+      <form id="form">
+        <label for="targets" id="l-targets"></label>
+        <textarea id="targets" rows="3" placeholder="https://exemple.be&#10;smtp://mail.exemple.be&#10;10.0.0.5:3389"></textarea>
+        <div class="row">
+          <label><span id="l-proto"></span>
+            <select id="proto"><option value="">auto</option><option>http</option><option>https</option><option>smtp</option><option>imap</option><option>pop3</option><option>ssh</option><option>rdp</option><option>ldap</option><option>ftp</option><option>banner</option></select></label>
+          <label><span id="l-trace"></span>
+            <select id="trace_mode"><option value="auto">auto</option><option value="icmp">ICMP</option><option value="tcp">TCP SYN</option></select></label>
+          <label class="chk"><input type="checkbox" id="no_trace"> <span id="l-notrace"></span></label>
+          <label class="chk"><input type="checkbox" id="ipv4"> IPv4</label>
+          <label class="chk"><input type="checkbox" id="ipv6"> IPv6</label>
+          <button type="submit" id="go" class="primary"></button>
+        </div>
+      </form>
+    </div>
+    <div id="status" class="mut"></div>
+    <div id="global"></div>
+    <div id="results"></div>
+    <div id="exports" class="card hidden">
+      <span id="l-export"></span>
+      <a id="x-html" target="_blank">HTML</a> · <a id="x-md">Markdown</a> · <a id="x-json">JSON</a> · <a id="x-ticket"></a>
+    </div>
+  </section>
+
+  <section id="view-history" class="hidden">
+    <div class="card">
+      <div class="row"><input id="hq" type="search"><button id="hdiff" disabled></button></div>
+      <table id="htable"><thead><tr><th></th><th id="h-date"></th><th id="h-target"></th><th id="h-verdict"></th><th></th></tr></thead><tbody></tbody></table>
+      <p id="hempty" class="mut hidden"></p>
+    </div>
+    <div id="diff" class="card hidden"></div>
+  </section>
+  <p class="mut foot">Jalon — GPL-3.0 — <span id="readonly"></span></p>
+</main>
+<script src="/static/app.js"></script>
+</body></html>
