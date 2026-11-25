@@ -105,8 +105,16 @@ var Rules = []Rule{
 	}},
 	{"gateway_down", model.Fail, "env", func(f Facts) (i18n.Msg, i18n.Msg, bool) {
 		e := f.env()
+		// Un refus (RST) prouve que le réseau répond : seule l'absence totale
+		// de réponse (timeout, injoignable) incrimine la passerelle.
+		noAnswer := len(f.outcomes()) > 0
+		for _, o := range f.outcomes() {
+			if o != "timeout" && o != "unreachable" {
+				noAnswer = false
+			}
+		}
 		ok := e != nil && e.GatewayPing != nil && e.GatewayPing.Error == "" && e.GatewayPing.Sent > 0 &&
-			e.GatewayPing.Recv == 0 && !f.anyConnected() && (f.T.DNS == nil || f.T.DNS.Status == model.Fail)
+			e.GatewayPing.Recv == 0 && noAnswer && (f.T.DNS == nil || f.T.DNS.Status == model.Fail)
 		if ok {
 			return m("v.gateway_down", e.GatewayPing.Target), m("a.gateway_down"), true
 		}

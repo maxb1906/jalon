@@ -258,6 +258,19 @@ func TestSeveritySortAndExit(t *testing.T) {
 	_ = time.Now
 }
 
+// Passerelle muette au ping mais RST reçu : le réseau marche.
+func TestGatewaySilentButRefused(t *testing.T) {
+	r, tr := base()
+	r.Env.GatewayPing.Recv = 0
+	tr.DNS = nil
+	tr.TCP[0].Outcome = "refused"
+	tr.TLS, tr.HTTP = nil, nil
+	v := Evaluate(r, tr)
+	if has(v, "gateway_down") || v.Findings[0].Rule != "tcp_refused" {
+		t.Errorf("%+v", v.Findings)
+	}
+}
+
 func TestRDPSelfSignedNotFailure(t *testing.T) {
 	r, tr := base()
 	protoTarget(tr, "rdp", 3389)
