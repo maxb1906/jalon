@@ -1,18 +1,18 @@
 # Jalon — Diagnostic de connectivité et traceroute applicatif
 
-> **Statut : v1 développée (jalons 1 à 17 terminés), en attente de validation avant publication.**
+> **Statut : v1.0.1 publiée** (2026-11-25) — https://github.com/maxb1906/jalon/releases/tag/v1.0.1 ; remise sur le socle commun d'Arpent et Aplomb (jalon 18) ; reste la validation sur une vraie machine Windows (jalon 19) et la signature de code (jalon 20).
 > Même famille qu'[[Arpent]] (audit réseau) et [[Aplomb]] (audit Windows) : exe portable, lecture seule, rapports exportables.
-> Ce fichier consigne tous les choix et sert de suivi d'implémentation pour Claude Code.
+> Ce fichier consigne tous les choix et sert de suivi d'implémentation pour Claude Code ; les décisions datées sont dans le **Journal des décisions** en fin de fichier.
 
 ## 0. Décisions prises
 
 | Sujet | Choix |
 |---|---|
 | Nom | **Jalon** |
-| Interfaces | CLI + TUI + UI web locale (`jalon --web`) |
+| Interfaces | CLI + TUI (`jalon tui`) + UI web locale (`jalon web`) |
 | HTTP/3 | Dès la v1 |
 | Proxy transparent | 100 % autonome, aucun service externe à moi (pas d'endpoint écho sur le VPS) |
-| Traceroute TCP SYN par saut | En v1, activé seulement si les droits sont disponibles (admin / root, Npcap sous Windows) |
+| Traceroute TCP SYN par saut | En v1, activé seulement si les droits sont disponibles (admin / root) ; sous Windows sans Npcap (voir « Écarts ») |
 | Plateformes | Windows, Linux, macOS (amd64 + arm64) |
 | Cibles non-HTTP | Sondes par protocole (SMTP, IMAP, POP3, SSH, RDP, LDAP, FTP) |
 | Historique | Oui, historique local avec comparaison automatique au dernier diagnostic |
@@ -120,7 +120,7 @@ Règle commune : **aucune authentification, aucune commande qui modifie un état
 - Rapport unique avec un tableau de synthèse (une ligne par cible, statut par couche) puis le détail
 
 ### Historique local
-- Chaque diagnostic est enregistré en JSON dans un dossier `jalon-history/` **à côté de l'exe** (portable) ; repli sur le dossier de config utilisateur si l'emplacement n'est pas inscriptible
+- Chaque diagnostic est enregistré en JSON dans `jalon-data/historique/` **à côté de l'exe** (portable), comme `arpent-data/` et `aplomb-data/` ; `--data` ou `JALON_DATA` pour un autre dossier. Si l'emplacement n'est pas inscriptible : repli sur le dossier temporaire, avec un avertissement (plus de repli sur le dossier de configuration utilisateur). L'ancien `jalon-history/` (v1.0.x) est déplacé automatiquement
 - Historique indexé par cible (et par réseau local : passerelle + IP publique estimée, pour distinguer « au bureau » et « à la maison »)
 - **Comparaison automatique** avec le dernier diagnostic de la même cible : IP résolues changées, certificat changé, chemin réseau différent, latence en hausse au-delà d'un seuil, couche passée de OK à échec
 - Options : `--no-history`, `jalon history` (liste), `jalon diff <id1> <id2>`, purge par âge
@@ -130,8 +130,10 @@ Règle commune : **aucune authentification, aucune commande qui modifie un état
 
 ### CLI
 - `jalon https://exemple.be`, `jalon smtp://mail.exemple.be`, `jalon 10.0.0.5:3389`
-- Options : `--no-trace`, `--trace-mode icmp|tcp|auto`, `--ipv4/--ipv6`, `--proto`, `--timeout`, `--json`, `--report html|md`, `--lang fr|en`
-- Codes de sortie exploitables en script : 0 OK, 1 avertissement, 2 échec
+- Options : `--no-trace`, `--trace-mode icmp|tcp|auto`, `--ipv4/--ipv6`, `--proto`, `--timeout`, `--json` (sortie standard), `--format html,md,json,ticket` (fichiers dans `jalon-data/rapports/`, `--out`, `-o`), `--lang fr|en`, `--report-lang fr|en`, `--data`
+- Sous-commandes : `web`, `tui`, `history`, `diff`, `version` (`--web` et `--tui` restent acceptés)
+- Codes de sortie exploitables en script : 0 OK, 1 avertissement, 2 échec du diagnostic, **3 erreur d'utilisation ou d'exécution** (option invalide, fichier illisible…)
+- `jalon-data/config.yaml` : même forme qu'Arpent et Aplomb (`technician`, `lang`, `report_lang`, `issuer: {name, company, contact, legal, color, logo}`)
 
 ### TUI
 - Vue cascade qui se remplit en direct, une couche par ligne avec statut
@@ -139,7 +141,7 @@ Règle commune : **aucune authentification, aucune commande qui modifie un état
 - Navigation entre cibles en multi-cible
 
 ### UI web locale
-- `jalon --web` : même exe, serveur HTTP sur **127.0.0.1 uniquement**, port aléatoire, jeton dans l'URL, ouvre le navigateur
+- `jalon web` : même exe, serveur HTTP sur **127.0.0.1 uniquement**, port aléatoire, jeton dans l'URL, contrôle de l'en-tête `Host` (hôte **et** port, comme Arpent), ouvre le navigateur
 - Saisie de la ou des cibles, suivi en direct (Server-Sent Events), consultation et comparaison de l'historique, export des rapports
 - Fichiers web embarqués dans le binaire (`embed`), aucun CDN externe
 
@@ -155,7 +157,7 @@ Règle commune : **aucune authentification, aucune commande qui modifie un état
 |---|---|
 | DNS vers un résolveur précis, DoH | `github.com/miekg/dns` + `net/http` |
 | ICMP / TTL | `golang.org/x/net/icmp`, `ipv4`, `ipv6` ; `IcmpSendEcho2` (iphlpapi) sous Windows |
-| TCP SYN par saut | raw sockets Linux/macOS ; Npcap via `gopacket/pcap` sous Windows (chargement dynamique de `wpcap.dll`, à valider sans cgo) |
+| TCP SYN par saut | raw sockets Linux/macOS ; sous Windows `connect()` à TTL réduit + socket ICMP raw (admin), sans Npcap ni `gopacket/pcap` |
 | TLS bas niveau | `crypto/tls` (`VerifyConnection`, `ConnectionState`) |
 | HTTP/2 | `net/http` + `golang.org/x/net/http2` |
 | HTTP/3 / QUIC | `github.com/quic-go/quic-go` |
@@ -166,7 +168,7 @@ Règle commune : **aucune authentification, aucune commande qui modifie un état
 | TUI | `charmbracelet/bubbletea` + `lipgloss` |
 | UI web | `net/http`, `html/template`, `embed`, SSE, JS vanilla |
 | Bundle CA Mozilla | `golang.org/x/crypto/x509roots/fallback` |
-| i18n | catalogues FR/EN embarqués |
+| i18n | catalogues JSON embarqués `assets/i18n/fr.json` et `en.json`, socle commun à Arpent et Aplomb (`internal/i18n/bundle.go`) |
 
 ### Moteur de cascade
 - Chaque étape = un `Probe` : `Run(ctx) Result` avec statut `OK / Warn / Fail / Skipped`, mesures, explication FR/EN
@@ -186,7 +188,9 @@ internal/history/     stockage JSON, diff
 internal/report/      html, md, json, ticket
 internal/ui/tui/      bubbletea
 internal/ui/web/      serveur local + assets embarqués
-internal/i18n/        fr, en
+internal/i18n/        socle commun (bundle.go) + messages Jalon
+internal/config/      jalon-data/ et config.yaml
+assets/i18n/          fr.json, en.json (embarqués)
 ```
 
 ## 6. Jalons de développement
@@ -207,6 +211,9 @@ internal/i18n/        fr, en
 15. [x] Rapports HTML / Markdown
 16. [x] i18n FR/EN complète
 17. [x] Builds Windows / Linux / macOS (amd64 + arm64), release GitHub, README
+18. [x] Remise sur le socle commun d'Arpent et Aplomb (audit de cohérence) : `docs/STRUCTURE.md` + journal, `CLAUDE.md`, `Makefile`, GoReleaser, CI complète, README FR/EN séparés, `jalon-data/`, `config.yaml`, code de sortie 3, sous-commandes, `--format` / `--report-lang`, page de garde, palette commune, i18n JSON
+19. [ ] Validation sur une vraie machine Windows : TCP SYN par saut (pare-feu Windows, réception des « TTL expiré »), double-clic, Contrôle intelligent des applications / SmartScreen, `jalon-data/` sur clé USB
+20. [ ] Signature de code SignPath, **après** celle d'Arpent (même démarche ; un exe qui ouvre des sockets ICMP raw sera bloqué par les mêmes protections Windows)
 
 ### Écarts et précisions d'implémentation
 - **TCP SYN par saut sous Windows** : implémenté sans Npcap, par `connect()` avec TTL réduit + socket ICMP raw (droits administrateur). Npcap n'est pas requis ; sa présence est seulement détectée et affichée. À valider sur une vraie machine Windows (pare-feu Windows et réception des « TTL expiré »).
@@ -217,7 +224,7 @@ internal/i18n/        fr, en
 ## 7. Risques
 - Faux positifs du traceroute (routeurs qui limitent l'ICMP) → le verdict raisonne sur la propagation de la perte, pas sur un saut isolé
 - Npcap sous Windows : licence Npcap non redistribuable gratuitement → Jalon ne l'embarque pas, il le détecte s'il est installé et explique comment l'obtenir
-- Antivirus qui signalent un exe qui ouvre des sockets ICMP/raw → binaire signé à terme, ou doc d'exclusion
+- Antivirus, SmartScreen et Contrôle intelligent des applications (Windows 11, blocage sans bouton pour passer outre) qui bloquent un exe non signé qui ouvre des sockets ICMP/raw → signature SignPath après Arpent (jalon 20), documentation dans le README en attendant
 - Sondes captives qui dépendent de services Google/Microsoft/Apple → au moins deux sources, verdict prudent
 - Heuristiques de proxy transparent sans serveur externe → moins fiables qu'un écho ; toujours formulées en « probable »
 - Sondes de protocoles : rester strictement en négociation, pour ne pas déclencher de blocage (fail2ban, verrouillage de compte)
@@ -225,3 +232,15 @@ internal/i18n/        fr, en
 
 ## 8. Nom
 **Jalon** : en arpentage, les jalons sont les piquets plantés le long d'un tracé pour vérifier chaque point du chemin, exactement ce que fait l'outil, saut par saut et couche par couche. Paire naturelle avec **Arpent**. Court, prononçable en FR et EN, commande `jalon` agréable à taper.
+
+## Journal des décisions
+
+- **2026-11-25** — Cadrage (§ 0 à 8) : CLI + TUI + UI web, HTTP/3 dès la v1, proxy transparent sans service externe, TCP SYN par saut si droits, Windows/Linux/macOS, sondes par protocole, historique local, multi-cible, Go, GPL-3.0, FR + EN, dépôt public `maxb1906/jalon`, lecture seule.
+- **2026-11-25** — Jalons 1 à 17 livrés en un seul commit (« Jalon v1 : jalons 1 à 17 ») ; les écarts d'implémentation sont listés dans « Écarts et précisions d'implémentation » (TCP SYN Windows sans Npcap, pas de traceroute ICMPv6 sous Windows, TTL du SYN-ACK sous Linux root seulement, tests HTTP en direct même avec un proxy configuré). Le choix sans Npcap règle aussi la question `windows/arm64` (pas de `gopacket/pcap`).
+- **2026-11-25** — v1.0.0 puis v1.0.1 publiées (double-clic Windows → interface web ; un refus TCP n'incrimine plus la passerelle). Le statut « en attente de validation avant publication » était en retard sur les tags : corrigé.
+- **2026-11-25** — Audit de cohérence Arpent · Aplomb · Jalon (jalon 18). Fichier renommé `docs/STRUCTURE.md`, journal ajouté, `CLAUDE.md` repris d'Arpent. Outillage commun : `Makefile` (`test` avec `-race`, `vet`, `fmt-check`, `build-all`, `all`), GoReleaser (archives `jalon_<version>_<os>_<arch>.zip|tar.gz` avec l'exe, LICENSE et les README ; `scripts/build.sh` supprimé), CI (gofmt, `go mod tidy -diff`, vet Linux/Windows/macOS, tests `-race` Ubuntu + Windows, GoReleaser à blanc, lancement réel de l'exe sous Windows : version, erreur d'utilisation, diagnostic sur 127.0.0.1 avec rapports, interface web). Le job de tests macOS est retiré (runners souvent indisponibles, CI rouge sans raison) : darwin reste compilé et passé à `go vet`.
+- **2026-11-25** — Données : `jalon-data/` (`historique/`, `rapports/`, `config.yaml`), `--data` et `JALON_DATA`, comme Arpent et Aplomb ; le repli sur le dossier de configuration utilisateur est supprimé (il contredisait « rien en dehors du dossier de l'exe ») : repli sur le dossier temporaire avec avertissement. `jalon-history/` est déplacé automatiquement ; un historique resté dans le dossier de configuration utilisateur (`%APPDATA%\jalon\history`) n'est pas repris. `--history-dir` reste accepté. Les rapports vont par défaut dans `jalon-data/rapports/` au lieu du dossier courant.
+- **2026-11-25** — CLI : code de sortie **3** pour les erreurs d'utilisation ou d'exécution (0/1/2 restent ceux du diagnostic) ; `jalon web` et `jalon tui` en sous-commandes (`--web`/`--tui` gardés comme alias) ; `--format html,md,json,ticket` remplace `--report` (gardé comme alias) ; `--json` et `--ticket` ne règlent plus que la sortie standard ; `--report-lang` distinct de `--lang`. Une cible nommée `web` ou `tui` s'écrit `https://web` ou `web:443`.
+- **2026-11-25** — `config.yaml` à la forme commune (`technician`, `lang`, `report_lang`, `issuer: {name, company, contact, legal, color, logo}`), créé avec le dossier de données ; nouvelle dépendance `gopkg.in/yaml.v3` v3.0.1 (celle d'Arpent et Aplomb). Rapports HTML et Markdown : page de garde (technicien, société, coordonnées, logo), mentions légales, couleur de l'émetteur ; JSON : `technician` et `issuer`. Palette commune aux trois outils (bloc `:root` identique), le mode sombre de l'UI web est conservé. Interface web : contrôle du port dans l'en-tête `Host`.
+- **2026-11-25** — i18n : catalogues Go (`catalog_*.go`) convertis en `assets/i18n/fr.json` et `en.json` (434 clés, conversion outillée) ; variables positionnelles `{1}`, `{2}`… au lieu de `%s` ; `internal/i18n/bundle.go` identique au paquet d'Arpent et Aplomb ; test `TestEmbeddedCatalogsAreComplete` (même nom que les deux autres). Le module partagé entre les trois dépôts reste à faire : pour l'instant le fichier est copié.
+- **2026-11-25** — Dépendances : `golang.org/x/crypto/x509roots/fallback` épinglé sur la version du 2026-10-20 (`v0.0.0-20261020153306-9f2b28d4331a`) au lieu de celle du 2026-11-23, pour respecter la règle « versions publiées depuis au moins 2 semaines ».

@@ -17,18 +17,18 @@
     return u.toString();
   };
 
-  // Rendu d'un message i18n {key, args} comme côté Go (%s, %%, @clé).
+  // Rendu d'un message i18n {key, args} comme côté Go ({1}, {2}…, @clé).
   const tr = (m) => {
     if (!m || !m.key) return "";
     const f = CAT[m.key];
     const args = m.args || [];
     if (f === undefined) return [m.key, ...args].join(" ");
-    let i = 0;
-    return f.split("%%").map((part) => part.replace(/%s/g, () => {
-      let a = args[i++] ?? "";
+    return f.replace(/\{(\d+)\}/g, (all, n) => {
+      let a = args[Number(n) - 1];
+      if (a === undefined) return all;
       if (a.length > 1 && a[0] === "@" && CAT[a.slice(1)] !== undefined) a = CAT[a.slice(1)];
       return a;
-    })).join("%");
+    });
   };
   const t = (k, ...a) => tr({ key: k, args: a.map(String) });
   const icon = (s) => ({ ok: "✔", warn: "⚠", fail: "✖", info: "ℹ" }[s] || "·");

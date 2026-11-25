@@ -1,0 +1,44 @@
+# GoReleaser — publication des binaires dans les GitHub Releases à chaque tag vX.Y.Z.
+# Même forme qu'Arpent et Aplomb : une archive par plateforme avec l'exe, LICENSE et les README.
+version: 2
+project_name: jalon
+dist: dist-goreleaser
+
+builds:
+  - id: jalon
+    main: ./cmd/jalon
+    binary: jalon
+    env: [CGO_ENABLED=0]
+    flags: [-trimpath]
+    ldflags: ["-s -w -X github.com/maxb1906/jalon/internal/model.Version={{ .Version }}"]
+    targets: [windows_amd64, windows_arm64, linux_amd64, linux_arm64, darwin_amd64, darwin_arm64]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: jalon
+    ids: [jalon]
+    name_template: "jalon_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files: [LICENSE, README.md, README.en.md]
+
+checksum:
+  name_template: SHA256SUMS
+  algorithm: sha256
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude: ["^docs:", "^ci:"]
+
+release:
+  draft: false
+  prerelease: auto
+  name_template: "Jalon {{ .Version }}"
+  footer: |
+    **Windows** : téléchargez `jalon_{{ .Version }}_windows_amd64.zip` (ou `windows_arm64`), décompressez-le sur une clé USB et double-cliquez sur `jalon.exe` (interface web locale).
+    L'exécutable n'est pas encore signé : SmartScreen peut afficher un avertissement (« Informations complémentaires » → « Exécuter quand même ») et le Contrôle intelligent des applications de Windows 11 le bloque sans possibilité de passer outre (voir le README).
+    Vérifiez l'intégrité avec `SHA256SUMS`.

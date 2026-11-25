@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/maxb1906/jalon/internal/config"
 	"github.com/maxb1906/jalon/internal/i18n"
 	"github.com/maxb1906/jalon/internal/model"
 )
@@ -78,5 +79,35 @@ func TestTextMarkdownHTML(t *testing.T) {
 		if !strings.Contains(h, "<!doctype html>") || strings.Contains(h, "http://") && strings.Contains(h, "<link") || strings.Contains(h, "<script src") {
 			t.Error("HTML autonome attendu")
 		}
+	}
+}
+
+// Page de garde : technicien, émetteur, logo et couleur de config.yaml.
+func TestCoverPage(t *testing.T) {
+	rep := sample(i18n.FR)
+	rep.Technician = "Ada <L>"
+	rep.Issuer = &config.Issuer{Name: "Grace", Company: "Société X", Contact: "contact@x.test", Legal: "TVA BE0123", Color: "#aa3300"}
+	rep.LogoDataURI = "data:image/png;base64,iVBORw0KGgo="
+	var b bytes.Buffer
+	if err := HTML(&b, rep); err != nil {
+		t.Fatal(err)
+	}
+	h := b.String()
+	for _, want := range []string{"Technicien : Ada &lt;L&gt;", "Société X", "Grace", "contact@x.test", "TVA BE0123", "--accent:#aa3300", `src="data:image/png;base64,iVBORw0KGgo="`, "--bad: #b42318"} {
+		if !strings.Contains(h, want) {
+			t.Errorf("HTML : %q absent", want)
+		}
+	}
+	if strings.Contains(h, "ZgotmplZ") {
+		t.Error("valeur filtrée par html/template")
+	}
+	b.Reset()
+	Markdown(&b, rep)
+	if md := b.String(); !strings.Contains(md, "Société X · Grace · contact@x.test") || !strings.Contains(md, "TVA BE0123") {
+		t.Errorf("Markdown : %s", md)
+	}
+	b.Reset()
+	if err := JSON(&b, rep); err != nil || !strings.Contains(b.String(), `"technician": "Ada <L>"`) || strings.Contains(b.String(), "base64") {
+		t.Errorf("JSON : %v %s", err, b.String())
 	}
 }

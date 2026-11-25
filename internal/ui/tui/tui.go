@@ -112,7 +112,7 @@ func Run(ctx context.Context, opt engine.Options, targets []model.Target) int {
 	}
 	if err != nil && ctx.Err() == nil {
 		fmt.Fprintln(os.Stderr, err)
-		return 2
+		return 3 // erreur de l'interface terminal, distincte d'un diagnostic en échec
 	}
 	for _, t := range rep.Targets {
 		if t != nil {

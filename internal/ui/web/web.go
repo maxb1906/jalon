@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -46,6 +47,10 @@ type Config struct {
 	Out         io.Writer
 	Proto       string
 	Addr        string // tests : adresse d'écoute (défaut 127.0.0.1:0)
+
+	// Decorate complète les rapports exportés (page de garde : technicien,
+	// émetteur, logo de config.yaml).
+	Decorate func(*model.Report)
 }
 
 // runState conserve les événements d'une exécution pour les rejouer.
@@ -105,7 +110,7 @@ func Serve(cfg Config) int {
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		fmt.Fprintln(cfg.Out, err)
-		return 2
+		return 3 // erreur d'exécution, distincte d'un diagnostic en échec
 	}
 	s.port = ln.Addr().(*net.TCPAddr).Port
 	url := fmt.Sprintf("http://127.0.0.1:%d/?t=%s", s.port, s.token)
@@ -122,7 +127,7 @@ func Serve(cfg Config) int {
 	}()
 	if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 		fmt.Fprintln(cfg.Out, err)
-		return 2
+		return 3
 	}
 	return 0
 }
@@ -161,8 +166,14 @@ func (s *Server) Handler() http.Handler {
 // guard vérifie l'hôte (anti DNS-rebinding) et le jeton.
 func (s *Server) guard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		host, _, _ := net.SplitHostPort(r.Host)
-		if host != "127.0.0.1" && host != "localhost" && host != "::1" {
+		// Hôte et port, comme Arpent : une page d'un autre port local ne
+		// passe pas non plus.
+		host, port, _ := net.SplitHostPort(r.Host)
+		okHost := host == "127.0.0.1" || host == "localhost" || host == "::1"
+		if s.port != 0 && port != strconv.Itoa(s.port) {
+			okHost = false
+		}
+		if !okHost {
 			http.Error(w, "forbidden host", http.StatusForbidden)
 			return
 		}
@@ -216,7 +227,7 @@ func (s *Server) apiI18n(w http.ResponseWriter, r *http.Request) {
 	l := s.lang(r)
 	out := map[string]string{}
 	for _, k := range i18n.Keys() {
-		out[k] = i18n.T(l, k)
+		out[k] = i18n.Raw(l, k)
 	}
 	writeJSON(w, out)
 }
@@ -417,6 +428,7 @@ func (s *Server) apiReport(w http.ResponseWriter, r *http.Request) {
 	}
 	cp := *rep
 	cp.Lang = s.lang(r)
+	s.decorate(&cp)
 	name := ""
 	if r.URL.Query().Get("download") == "1" {
 		name = "jalon-" + rep.Started.Format("20060102-150405")
@@ -460,6 +472,7 @@ func (s *Server) apiHistoryReport(w http.ResponseWriter, r *http.Request) {
 	rep := &model.Report{Tool: "jalon", Version: e.Version, Lang: s.lang(r), Started: e.Time, Finished: e.Report.Finished,
 		Env: e.Env, Targets: []*model.TargetReport{e.Report}}
 	rep.ComputeExit()
+	s.decorate(rep)
 	name := ""
 	if r.URL.Query().Get("download") == "1" {
 		name = e.ID
@@ -499,4 +512,11 @@ func (s *Server) apiDiff(w http.ResponseWriter, r *http.Request) {
 		"from_verdict": a.Report.Verdict.Headline.In(l), "to_verdict": b.Report.Verdict.Headline.In(l),
 		"changes": changes,
 	})
+}
+
+// decorate applique Config.Decorate s'il est défini.
+func (s *Server) decorate(rep *model.Report) {
+	if s.cfg.Decorate != nil {
+		s.cfg.Decorate(rep)
+	}
 }

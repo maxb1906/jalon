@@ -10,7 +10,7 @@ func printJSON(w io.Writer, v any) int {
 	enc.SetIndent("", "  ")
 	enc.SetEscapeHTML(false)
 	if err := enc.Encode(v); err != nil {
-		return 2
+		return exitUsage
 	}
 	return 0
 }

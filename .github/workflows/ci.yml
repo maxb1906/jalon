@@ -1,26 +1,113 @@
 name: CI
+
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
   test:
+    name: Tests (${{ matrix.os }})
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+      - name: gofmt
+        if: runner.os == 'Linux'
+        run: make fmt-check
+      - name: go.mod à jour (go mod tidy)
+        if: runner.os == 'Linux'
+        run: go mod tidy -diff
       - run: go vet ./...
-      - run: go test ./...
-  cross:
+      - name: go vet (GOOS=windows, GOOS=darwin)
+        if: runner.os == 'Linux'
+        run: GOOS=windows go vet ./... && GOOS=darwin go vet ./...
+      - run: go test -race ./...
+
+  build:
+    name: Build (cross-compilation)
+    needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - run: scripts/build.sh ci
+      - run: make build-all
+      - name: SHA-256
+        run: cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS
+      - uses: actions/upload-artifact@v7
+        with:
+          name: jalon-binaries
+          path: dist/
+          if-no-files-found: error
+      - name: Vérification de la configuration GoReleaser (à blanc)
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: "v2.20.1"
+          args: release --snapshot --clean --skip=publish
+
+  smoke-windows:
+    name: Lancement de l'exe Windows
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: jalon-binaries
+          path: dist
+      - name: Version et erreur d'utilisation
+        shell: pwsh
+        run: |
+          # Les codes de sortie non nuls sont attendus et vérifiés à la main.
+          $PSNativeCommandUseErrorActionPreference = $false
+          $exe = "./dist/jalon-windows-amd64.exe"
+          & $exe version
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          & $exe --lang en --no-history --format pdf example.invalid
+          if ($LASTEXITCODE -ne 3) { Write-Error "code $LASTEXITCODE au lieu de 3"; exit 1 }
+          exit 0
+      - name: Diagnostic sur 127.0.0.1 et rapports
+        shell: pwsh
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $false
+          $exe = "./dist/jalon-windows-amd64.exe"
+          $data = "$env:RUNNER_TEMP\jalon-data"
+          $srv = Start-Process -FilePath python -ArgumentList "-m","http.server","8765","--bind","127.0.0.1" -PassThru -NoNewWindow
+          Start-Sleep -Seconds 2
+          & $exe --data $data --no-trace --timeout 3s --format html,md,json,ticket http://127.0.0.1:8765/
+          $code = $LASTEXITCODE
+          Stop-Process $srv
+          # 0, 1 ou 2 : le diagnostic a tourné ; 3 ou plus : erreur de Jalon.
+          if ($code -gt 2) { Write-Error "code $code"; exit 1 }
+          foreach ($ext in "html","md","json","txt") {
+            if (-not (Get-ChildItem "$data\rapports\jalon-*.$ext" -ErrorAction SilentlyContinue)) { Write-Error "rapport .$ext absent"; exit 1 }
+          }
+          if (-not (Get-ChildItem "$data\historique\*.json")) { Write-Error "historique vide"; exit 1 }
+          if (-not (Test-Path "$data\config.yaml")) { Write-Error "config.yaml absent"; exit 1 }
+          & $exe --data $data history
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          exit 0
+      - name: Interface web (démarrage et page d'accueil)
+        shell: pwsh
+        run: |
+          $data = "$env:RUNNER_TEMP\jalon-web"
+          $p = Start-Process -FilePath ./dist/jalon-windows-amd64.exe -ArgumentList "--data","$data","web","--no-browser" -PassThru -RedirectStandardOutput web.log -NoNewWindow
+          Start-Sleep -Seconds 3
+          $url = (Select-String -Path web.log -Pattern 'http://127\.0\.0\.1:\d+/\?t=[0-9a-f]+').Matches[0].Value
+          $r = Invoke-WebRequest -Uri $url -UseBasicParsing
+          if ($r.StatusCode -ne 200 -or $r.Content -notmatch 'Jalon') { Stop-Process $p; exit 1 }
+          Stop-Process $p

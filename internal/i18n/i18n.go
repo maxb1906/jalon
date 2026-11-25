@@ -1,9 +1,15 @@
-// Package i18n fournit les catalogues de messages FR/EN embarqués.
+// Package i18n fournit les messages FR/EN de Jalon, lus dans les catalogues
+// JSON embarqués (assets/i18n/fr.json et en.json) par le socle commun à
+// Arpent et Aplomb (bundle.go).
+//
+// Les messages s'écrivent avec des variables positionnelles {1}, {2}… Un
+// argument « @clé » est lui-même traduit.
 package i18n
 
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -39,35 +45,46 @@ func T(l Lang, key string, args ...any) string {
 	return M(key, args...).In(l)
 }
 
+// bundle renvoie les catalogues embarqués ; une erreur de lecture est un bug
+// de construction (détecté par les tests).
+func bundle() *Bundle {
+	b, err := Default()
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
+
+// lookup cherche une clé dans la langue demandée puis dans la langue de repli.
+func (b *Bundle) lookup(l Lang, key string) (string, bool) {
+	if s, ok := b.catalogs[string(l)][key]; ok {
+		return s, true
+	}
+	s, ok := b.catalogs[Fallback][key]
+	return s, ok
+}
+
 // In rend le message dans la langue demandée. Une clé inconnue est rendue
 // telle quelle (avec ses arguments), jamais de panique.
 func (m Msg) In(l Lang) string {
-	e, ok := catalog[m.Key]
-	if !ok {
+	b := bundle()
+	if _, ok := b.lookup(l, m.Key); !ok {
 		if len(m.Args) == 0 {
 			return m.Key
 		}
 		return m.Key + " " + strings.Join(m.Args, " ")
 	}
-	f := e[0]
-	if l == EN {
-		f = e[1]
-	}
-	if len(m.Args) == 0 {
-		return f
-	}
-	a := make([]any, len(m.Args))
+	pairs := make([]string, 0, 2*len(m.Args))
 	for i, s := range m.Args {
 		// « @clé » : argument lui-même traduit.
 		if len(s) > 1 && s[0] == '@' {
-			if _, ok := catalog[s[1:]]; ok {
-				a[i] = T(l, s[1:])
-				continue
+			if _, ok := b.lookup(l, s[1:]); ok {
+				s = T(l, s[1:])
 			}
 		}
-		a[i] = s
+		pairs = append(pairs, strconv.Itoa(i+1), s)
 	}
-	return fmt.Sprintf(f, a...)
+	return b.Translator(string(l)).T(m.Key, pairs...)
 }
 
 // Parse convertit une chaîne en langue (défaut : FR).
@@ -104,18 +121,20 @@ func Detect() Lang {
 }
 
 // Keys renvoie toutes les clés du catalogue (pour les tests et l'UI web).
-func Keys() []string {
-	k := make([]string, 0, len(catalog))
-	for key := range catalog {
-		k = append(k, key)
+func Keys() []string { return bundle().Keys(Fallback) }
+
+// Raw renvoie le texte d'une clé sans remplacer les variables (UI web).
+func Raw(l Lang, key string) string {
+	if s, ok := bundle().lookup(l, key); ok {
+		return s
 	}
-	return k
+	return key
 }
 
 // Prefixed renvoie les traductions des clés commençant par prefix.
 func Prefixed(l Lang, prefix string) map[string]string {
 	out := map[string]string{}
-	for k := range catalog {
+	for _, k := range Keys() {
 		if strings.HasPrefix(k, prefix) {
 			out[k] = T(l, k)
 		}

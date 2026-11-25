@@ -1,6 +1,6 @@
 // Package history enregistre chaque diagnostic en JSON localement (dossier
-// jalon-history/ à côté de l'exécutable) et compare au diagnostic précédent.
-// Rien n'est jamais envoyé sur le réseau.
+// jalon-data/historique/ à côté de l'exécutable, voir internal/config) et
+// compare au diagnostic précédent. Rien n'est jamais envoyé sur le réseau.
 package history
 
 import (
@@ -46,42 +46,10 @@ type Meta struct {
 // Store est un dossier d'historique.
 type Store struct{ Dir string }
 
-// DefaultDir renvoie le dossier à côté de l'exécutable s'il est inscriptible,
-// sinon le dossier de configuration utilisateur.
-func DefaultDir() string {
-	if exe, err := os.Executable(); err == nil {
-		if real, err := filepath.EvalSymlinks(exe); err == nil {
-			exe = real
-		}
-		d := filepath.Join(filepath.Dir(exe), "jalon-history")
-		if writable(d) {
-			return d
-		}
-	}
-	if c, err := os.UserConfigDir(); err == nil {
-		return filepath.Join(c, "jalon", "history")
-	}
-	return filepath.Join(os.TempDir(), "jalon-history")
-}
-
-func writable(dir string) bool {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return false
-	}
-	f, err := os.CreateTemp(dir, ".probe-*")
-	if err != nil {
-		return false
-	}
-	name := f.Name()
-	f.Close()
-	os.Remove(name)
-	return true
-}
-
 // Open ouvre (et crée) un dossier d'historique.
 func Open(dir string) (*Store, error) {
 	if dir == "" {
-		dir = DefaultDir()
+		return nil, errors.New("history: dossier non indiqué")
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err

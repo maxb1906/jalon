@@ -26,6 +26,10 @@ func HTML(w io.Writer, rep *model.Report) error {
 		"join":   strings.Join,
 		"first":  func(s ...string) string { return firstNon(append(s, "-")...) },
 		"upper":  strings.ToUpper,
+		"safeURL": func(s string) template.URL {
+			// data: URI construit par Jalon à partir du logo du dossier de données.
+			return template.URL(s)
+		},
 		"hopname": func(h model.Hop) string {
 			if h.Addr == "" {
 				return "*"
@@ -64,9 +68,22 @@ func orSkipped(s model.Status) model.Status {
 
 // CSS commun au rapport HTML et à l'UI web.
 const CSS = `
-:root{--bg:#f6f7f9;--card:#fff;--fg:#1d2330;--mut:#5f6b7a;--line:#e2e6eb;--ok:#1a7f37;--warn:#9a6700;--fail:#cf222e;--info:#0969da;--skip:#8c959f}
-@media (prefers-color-scheme:dark){:root{--bg:#0f1218;--card:#171b22;--fg:#e6edf3;--mut:#8b96a5;--line:#2a313c;--ok:#3fb950;--warn:#d29922;--fail:#f85149;--info:#58a6ff;--skip:#6e7681}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+/* Palette commune Arpent · Aplomb · Jalon : bloc à garder identique dans les trois dépôts. */
+:root {
+  --accent: #1f5f8b;
+  --fg: #1b2530; --muted: #5d6b78; --line: #d5dce3; --bg: #f6f7f9; --card: #fff;
+  --bad: #b42318; --bad-bg: #fde8e6;
+  --warn: #a86200; --warn-bg: #fdf0dc;
+  --info: #2a6db0; --info-bg: #e8f1fb;
+  --ok: #1e7a46; --ok-bg: #e3f4ea;
+  --na: #667085; --na-bg: #f2f4f7;
+  --font: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+  --mono: Consolas, "Cascadia Mono", ui-monospace, Menlo, monospace;
+}
+/* Fin de la palette commune. */
+:root{--mut:var(--muted);--fail:var(--bad);--skip:var(--na)}
+@media (prefers-color-scheme:dark){:root{--accent:#58a6ff;--bg:#0f1218;--card:#171b22;--fg:#e6edf3;--muted:#8b96a5;--line:#2a313c;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--info:#58a6ff;--na:#6e7681}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 var(--font)}
 main{max-width:1100px;margin:0 auto;padding:24px}
 h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:0 0 10px}h3{font-size:14px;margin:16px 0 6px;color:var(--mut)}
 .mut{color:var(--mut)}.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:16px 0}
@@ -76,15 +93,21 @@ th{font-weight:600;color:var(--mut);font-size:12px;text-transform:uppercase;lett
 .verdict{font-size:16px;font-weight:600;padding:10px 12px;border-radius:8px;border-left:4px solid currentColor;background:color-mix(in srgb,currentColor 8%,transparent)}
 .advice{margin:8px 0 0;color:var(--fg)}.note{font-size:13px;color:var(--mut)}.note .ic{margin-right:4px}
 .ic{display:inline-block;width:1.2em;text-align:center}.layer{white-space:nowrap;font-weight:500}
-pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre-wrap;font:12px/1.45 ui-monospace,Menlo,Consolas,monospace}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre-wrap;font:12px/1.45 var(--mono)}
 .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cover{border-left:6px solid var(--accent);padding:4px 0 4px 16px;margin:0 0 8px}.cover .logo{max-width:200px;max-height:64px;object-fit:contain;display:block;margin:0 0 10px}
+.legal{white-space:pre-line;font-size:12px}h2{color:var(--accent)}
+@media print{body{background:#fff}.card{break-inside:avoid}}
 `
 
 const htmlTpl = `<!doctype html>
 <html lang="{{.Lang}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{{t "html.title"}} — {{time .Started}}</title><style>` + CSS + `</style></head><body><main>
+<title>{{t "html.title"}} — {{time .Started}}</title><style>` + CSS + `{{with .Issuer}}{{if .Color}}:root{--accent:{{.Color}}}{{end}}{{end}}</style></head><body><main>
+<header class="cover">{{with .LogoDataURI}}<img class="logo" src="{{safeURL .}}" alt="">{{end}}
 <h1>{{t "html.title"}}</h1>
 <div class="mut">{{t "html.generated" .Version (time .Started)}}</div>
+{{if .Technician}}<div>{{t "html.technician" .Technician}}</div>{{end}}
+{{with .Issuer}}{{if or .Company .Name}}<div><strong>{{first .Company .Name}}</strong>{{if and .Company .Name}} · {{.Name}}{{end}}</div>{{end}}{{if .Contact}}<div class="mut">{{.Contact}}</div>{{end}}{{end}}</header>
 {{with .Env}}<div class="mut">{{t "text.host" .Hostname .OS (first .LocalIPv4 .LocalIPv6) (first (join .Gateways ", ")) (first .PublicIP)}}</div>{{end}}
 {{if gt (len .Targets) 1}}<div class="card"><h2>{{t "text.synthesis"}}</h2><table><tr><th>{{t "col.target"}}</th>{{range cols}}<th>{{t (print "col." .)}}</th>{{end}}<th>{{t "col.verdict"}}</th></tr>
 {{range .Targets}}{{if .}}{{$tr := .}}<tr><td>{{.Target.Raw}}</td>{{range cols}}{{$s := layer $tr .}}<td class="{{cls $s}}">{{icon $s}} {{short $s}}</td>{{end}}<td class="{{cls .Verdict.Status}}">{{msg .Verdict.Headline}}</td></tr>{{end}}{{end}}
@@ -103,6 +126,7 @@ const htmlTpl = `<!doctype html>
 {{if .Changes}}<ul>{{range .Changes}}<li class="{{cls .Severity}}">{{icon .Severity}} {{msg .Msg}}</li>{{end}}</ul>{{else}}<p class="mut">{{t "text.no_changes"}}</p>{{end}}{{end}}
 <h3>{{t "text.ticket"}}</h3><pre>{{ticket .}}</pre>
 </div>{{end}}{{end}}
+{{with .Issuer}}{{if .Legal}}<p class="legal mut">{{.Legal}}</p>{{end}}{{end}}
 <p class="mut">Jalon — GPL-3.0 — https://github.com/maxb1906/jalon</p>
 </main></body></html>
 {{define "steps"}}<table><tr><th></th><th>{{t "html.layer"}}</th><th>{{t "html.result"}}</th><th class="num">ms</th></tr>
