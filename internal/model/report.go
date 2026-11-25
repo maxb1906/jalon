@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/maxb1906/jalon/internal/config"
 	"github.com/maxb1906/jalon/internal/i18n"
 )
 
@@ -191,6 +192,13 @@ type Report struct {
 	Targets   []*TargetReport `json:"targets"`
 	Status    Status          `json:"status"`
 	ExitCode  int             `json:"exit_code"`
+
+	// Page de garde des rapports (config.yaml) : technicien et émetteur.
+	Technician string         `json:"technician,omitempty"`
+	Issuer     *config.Issuer `json:"issuer,omitempty"`
+
+	// LogoDataURI est le logo de l'émetteur en data: URI (rapport HTML seulement).
+	LogoDataURI string `json:"-"`
 }
 
 // GlobalSteps renvoie les étapes communes à toutes les cibles.

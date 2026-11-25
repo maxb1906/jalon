@@ -1,8 +1,12 @@
 /jalon
 /jalon.exe
 /dist/
+/dist-goreleaser/
+/jalon-data/
+/cmd/jalon/jalon-data/
 /jalon-history/
 *.test
+*.out
 /jalon-*.html
 /jalon-*.md
 /jalon-*.json

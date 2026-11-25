@@ -1,22 +1,47 @@
 package i18n
 
 import (
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
 
-func TestCatalogComplete(t *testing.T) {
-	for k, v := range catalog {
-		if v[0] == "" || v[1] == "" {
+var placeholder = regexp.MustCompile(`\{[0-9]+\}`)
+
+// Même nom de test qu'Arpent et Aplomb : une traduction manquante, vide ou
+// dont les variables diffèrent fait échouer la CI.
+func TestEmbeddedCatalogsAreComplete(t *testing.T) {
+	b, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := b.Languages(); !slices.Equal(got, []string{"en", "fr"}) {
+		t.Fatalf("langues = %v", got)
+	}
+	fr, en := b.Keys("fr"), b.Keys("en")
+	if !slices.Equal(fr, en) {
+		t.Errorf("clés différentes : %d en FR, %d en EN", len(fr), len(en))
+	}
+	for _, k := range fr {
+		vf, _ := b.lookup(FR, k)
+		ve, ok := b.catalogs["en"][k]
+		if !ok {
+			t.Errorf("%s : absente en EN", k)
+			continue
+		}
+		if vf == "" || ve == "" {
 			t.Errorf("%s : traduction vide", k)
 		}
-		if n0, n1 := strings.Count(v[0], "%s"), strings.Count(v[1], "%s"); n0 != n1 {
-			t.Errorf("%s : %d %%s en FR, %d en EN", k, n0, n1)
+		pf, pe := placeholder.FindAllString(vf, -1), placeholder.FindAllString(ve, -1)
+		slices.Sort(pf)
+		slices.Sort(pe)
+		if !slices.Equal(pf, pe) {
+			t.Errorf("%s : variables %v en FR, %v en EN", k, pf, pe)
 		}
-		for _, s := range v {
-			r := strings.NewReplacer("%s", "", "%%", "").Replace(s)
-			if strings.Contains(r, "%") {
-				t.Errorf("%s : verbe de format autre que %%s : %q", k, s)
+		for _, s := range []string{vf, ve} {
+			if strings.Contains(s, "%s") {
+				t.Errorf("%s : ancien format %%s : %q", k, s)
 			}
 		}
 	}
@@ -35,6 +60,10 @@ func TestIn(t *testing.T) {
 	m := Msg{Key: "chg.layer_warn", Args: []string{"@col.dns"}}
 	if got := m.In(EN); got != "layer DNS: new warning" {
 		t.Errorf("@ = %q", got)
+	}
+	// Un argument qui contient « {2} » n'est pas réinterprété.
+	if got := T(EN, "tcp.connected", "{2}", 443, "1"); !strings.HasPrefix(got, "{2} port 443") {
+		t.Errorf("argument réinterprété : %q", got)
 	}
 }
 

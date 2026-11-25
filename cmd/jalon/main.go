@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/mattn/go-isatty"
 
+	"github.com/maxb1906/jalon/internal/config"
 	"github.com/maxb1906/jalon/internal/engine"
 	"github.com/maxb1906/jalon/internal/history"
 	"github.com/maxb1906/jalon/internal/i18n"
@@ -29,13 +31,22 @@ import (
 	"github.com/maxb1906/jalon/internal/ui/web"
 )
 
+// Codes de sortie : 0, 1 et 2 viennent du diagnostic (OK, avertissement,
+// échec) ; exitUsage signale une erreur d'utilisation ou d'exécution de Jalon
+// (option invalide, fichier illisible…), pour qu'un script ne la confonde pas
+// avec un diagnostic en échec.
+const exitUsage = 3
+
+// reportFormats sont les formats acceptés par --format.
+var reportFormats = []string{"html", "md", "json", "ticket"}
+
 func main() {
 	args := os.Args[1:]
 	dc := doubleClicked()
 	if dc && len(args) == 0 {
 		// Double clic sous Windows : sans cible, on ouvre l'interface web
 		// plutôt que d'afficher l'aide dans une fenêtre qui se referme.
-		args = []string{"--web"}
+		args = []string{"web"}
 	}
 	code := run(args, os.Stdout, os.Stderr)
 	if dc && code != 0 {
@@ -53,9 +64,13 @@ type cliOpts struct {
 	proto      string
 	timeout    time.Duration
 	jsonOut    bool
-	reportFmt  string
+	format     string
+	reportFmt  string // ancien nom de --format
+	reportLang string
 	output     string
+	outDir     string
 	lang       string
+	data       string
 	parallel   int
 	noHistory  bool
 	historyDir string
@@ -88,9 +103,13 @@ func newFlagSet(o *cliOpts, l i18n.Lang, stderr io.Writer) *flag.FlagSet {
 	fs.StringVar(&o.proto, "proto", "", h("proto"))
 	fs.DurationVar(&o.timeout, "timeout", 5*time.Second, h("timeout"))
 	fs.BoolVar(&o.jsonOut, "json", false, h("json"))
+	fs.StringVar(&o.format, "format", "", h("format"))
 	fs.StringVar(&o.reportFmt, "report", "", h("report"))
+	fs.StringVar(&o.reportLang, "report-lang", "", h("report-lang"))
 	fs.StringVar(&o.output, "o", "", h("o"))
+	fs.StringVar(&o.outDir, "out", "", h("out"))
 	fs.StringVar(&o.lang, "lang", "", h("lang"))
+	fs.StringVar(&o.data, "data", "", h("data"))
 	fs.IntVar(&o.parallel, "parallel", 4, h("parallel"))
 	fs.BoolVar(&o.parallelTr, "parallel-trace", false, h("parallel-trace"))
 	fs.BoolVar(&o.noHistory, "no-history", false, h("no-history"))
@@ -152,6 +171,69 @@ func langFromArgs(args []string) i18n.Lang {
 	return i18n.Detect()
 }
 
+// app regroupe ce qui est résolu une fois par exécution : langue,
+// configuration et dossier de données (créé seulement s'il sert).
+type app struct {
+	o      cliOpts
+	l      i18n.Lang
+	stderr io.Writer
+	cfg    config.Config
+	cfgDir string // dossier où config.yaml et le logo sont lus
+	data   string // dossier de données inscriptible, résolu à la demande
+}
+
+// dataDir renvoie le dossier de données, créé au premier besoin.
+func (a *app) dataDir() (string, error) {
+	if a.data != "" {
+		return a.data, nil
+	}
+	d, fallback, err := config.DataDir(a.o.data)
+	if err != nil {
+		return "", errors.New(i18n.T(a.l, "cli.data_error", err))
+	}
+	if fallback {
+		fmt.Fprintln(a.stderr, i18n.T(a.l, "cli.data_fallback", d))
+	} else {
+		_ = config.WriteTemplate(d)
+	}
+	if old := config.MigrateLegacyHistory(d); old != "" {
+		fmt.Fprintln(a.stderr, i18n.T(a.l, "cli.history_migrated", old, config.HistoryDir(d)))
+	}
+	a.data = d
+	return d, nil
+}
+
+// historyDir renvoie --history-dir, sinon jalon-data/historique.
+func (a *app) historyDir() (string, error) {
+	if a.o.historyDir != "" {
+		return a.o.historyDir, nil
+	}
+	d, err := a.dataDir()
+	if err != nil {
+		return "", err
+	}
+	return config.HistoryDir(d), nil
+}
+
+// openStore ouvre l'historique.
+func (a *app) openStore() (*history.Store, error) {
+	dir, err := a.historyDir()
+	if err != nil {
+		return nil, err
+	}
+	return history.Open(dir)
+}
+
+// decorate ajoute la page de garde (technicien, émetteur, logo) au rapport.
+func (a *app) decorate(rep *model.Report) {
+	rep.Technician = a.cfg.Technician
+	if !a.cfg.Issuer.IsZero() {
+		is := a.cfg.Issuer
+		rep.Issuer = &is
+	}
+	rep.LogoDataURI = a.cfg.LogoDataURI(a.cfgDir)
+}
+
 func run(args []string, stdout, stderr io.Writer) int {
 	l := langFromArgs(args)
 	var o cliOpts
@@ -161,7 +243,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
 		}
-		return 2
+		return exitUsage
 	}
 	if o.version {
 		fmt.Fprintf(stdout, "jalon %s\n", model.Version)
@@ -172,32 +254,81 @@ func run(args []string, stdout, stderr io.Writer) int {
 			l = pl
 		} else {
 			fmt.Fprintln(stderr, i18n.T(l, "cli.bad_lang", o.lang))
-			return 2
+			return exitUsage
 		}
 	}
+
+	a := &app{o: o, l: l, stderr: stderr}
+	if dir, _, err := config.Resolve(o.data); err == nil {
+		a.cfgDir = dir
+		cfg, err := config.Load(dir)
+		if err != nil {
+			fmt.Fprintln(stderr, i18n.T(l, "cli.config_error", err))
+		}
+		a.cfg = cfg
+	}
+	// Langue : --lang, puis JALON_LANG, puis config.yaml, puis le système.
+	if o.lang == "" && os.Getenv("JALON_LANG") == "" && a.cfg.Lang != "" {
+		if cl, ok := i18n.Parse(a.cfg.Lang); ok {
+			l, a.l = cl, cl
+		}
+	}
+
 	if len(pos) > 0 {
 		switch pos[0] {
 		case "history":
-			return cmdHistory(o, l, pos[1:], stdout, stderr)
+			return cmdHistory(a, pos[1:], stdout, stderr)
 		case "diff":
-			return cmdDiff(o, l, pos[1:], stdout, stderr)
+			return cmdDiff(a, pos[1:], stdout, stderr)
 		case "version":
 			fmt.Fprintf(stdout, "jalon %s\n", model.Version)
 			return 0
 		case "help":
 			fs.Usage()
 			return 0
+		case "web":
+			o.web, pos = true, pos[1:]
+		case "tui":
+			o.tui, pos = true, pos[1:]
 		}
+	}
+
+	// Langue des rapports : --report-lang, puis config.yaml, puis l'outil.
+	rl := l
+	switch {
+	case o.reportLang != "":
+		pl, ok := i18n.Parse(o.reportLang)
+		if !ok {
+			fmt.Fprintln(stderr, i18n.T(l, "cli.bad_lang", o.reportLang))
+			return exitUsage
+		}
+		rl = pl
+	case a.cfg.ReportLang != "":
+		if pl, ok := i18n.Parse(a.cfg.ReportLang); ok {
+			rl = pl
+		}
+	}
+	formats, ok := parseFormats(firstNonEmpty(o.format, o.reportFmt))
+	if !ok {
+		fmt.Fprintln(stderr, i18n.T(l, "cli.bad_format", firstNonEmpty(o.format, o.reportFmt)))
+		return exitUsage
+	}
+	if len(formats) == 0 && o.jsonOut && o.output != "" {
+		formats = []string{"json"} // ancienne forme : --json -o fichier
+	}
+	if len(formats) > 1 && o.output != "" {
+		fmt.Fprintln(stderr, i18n.T(l, "cli.output_multi"))
+		return exitUsage
 	}
 
 	opt, err := buildOptions(o, l)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
-		return 2
+		return exitUsage
 	}
 	var store *history.Store
 	if !o.noHistory {
-		if s, err := history.Open(o.historyDir); err == nil {
+		if s, err := a.openStore(); err == nil {
 			store = s
 		} else {
 			fmt.Fprintln(stderr, i18n.T(l, "cli.history_error", err))
@@ -208,7 +339,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if o.web {
-		return web.Serve(web.Config{Options: opt, Store: store, Lang: l, OpenBrowser: !o.noBrowser, Out: stdout, Proto: o.proto})
+		return web.Serve(web.Config{Options: opt, Store: store, Lang: l, OpenBrowser: !o.noBrowser, Out: stdout, Proto: o.proto, Decorate: a.decorate})
 	}
 
 	raws := pos
@@ -220,7 +351,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 			f, err := os.Open(o.file)
 			if err != nil {
 				fmt.Fprintln(stderr, err)
-				return 2
+				return exitUsage
 			}
 			defer f.Close()
 			r = f
@@ -228,20 +359,20 @@ func run(args []string, stdout, stderr io.Writer) int {
 		list, err := target.ReadList(r)
 		if err != nil {
 			fmt.Fprintln(stderr, err)
-			return 2
+			return exitUsage
 		}
 		raws = append(raws, list...)
 	}
 	if len(raws) == 0 {
 		fs.Usage()
-		return 2
+		return exitUsage
 	}
 	var targets []model.Target
 	for _, r := range raws {
 		t, err := target.Parse(r, o.proto)
 		if err != nil {
 			fmt.Fprintln(stderr, i18n.T(l, "engine.target_error", r+" : "+err.Error()))
-			return 2
+			return exitUsage
 		}
 		targets = append(targets, t)
 	}
@@ -280,19 +411,56 @@ func run(args []string, stdout, stderr io.Writer) int {
 	default:
 		report.Text(stdout, rep, report.TextOptions{Style: style, Verbose: o.verbose, Ticket: true, Live: live})
 	}
-	if o.reportFmt != "" || (o.jsonOut && o.output != "") {
-		format := o.reportFmt
-		if format == "" {
-			format = "json"
+	if len(formats) > 0 {
+		dir := o.outDir
+		if dir == "" && o.output == "" {
+			d, err := a.dataDir()
+			if err != nil {
+				fmt.Fprintln(stderr, err)
+				return exitUsage
+			}
+			dir = config.ReportsDir(d)
 		}
-		path, err := writeReport(rep, format, o.output)
+		cp := *rep
+		cp.Lang = rl
+		a.decorate(&cp)
+		paths, err := writeReports(&cp, formats, dir, o.output)
 		if err != nil {
 			fmt.Fprintln(stderr, err)
-			return 2
+			return exitUsage
 		}
-		fmt.Fprintln(stderr, i18n.T(l, "cli.report_written", path))
+		for _, p := range paths {
+			fmt.Fprintln(stderr, i18n.T(l, "cli.report_written", p))
+		}
 	}
 	return rep.ExitCode
+}
+
+func firstNonEmpty(s ...string) string {
+	for _, v := range s {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// parseFormats lit « html,md,json,ticket » ; false si un format est inconnu.
+func parseFormats(s string) ([]string, bool) {
+	var out []string
+	for _, f := range strings.Split(s, ",") {
+		f = strings.ToLower(strings.TrimSpace(f))
+		if f == "" {
+			continue
+		}
+		if !slices.Contains(reportFormats, f) {
+			return nil, false
+		}
+		if !slices.Contains(out, f) {
+			out = append(out, f)
+		}
+	}
+	return out, true
 }
 
 func buildOptions(o cliOpts, l i18n.Lang) (engine.Options, error) {
@@ -313,9 +481,6 @@ func buildOptions(o cliOpts, l i18n.Lang) (engine.Options, error) {
 		if _, err := target.Parse("x.invalid:1", o.proto); err != nil {
 			return opt, errors.New(i18n.T(l, "cli.bad_proto", o.proto, strings.Join(target.Protos, ", ")))
 		}
-	}
-	if o.reportFmt != "" && o.reportFmt != "html" && o.reportFmt != "md" && o.reportFmt != "json" {
-		return opt, errors.New(i18n.T(l, "cli.bad_report", o.reportFmt))
 	}
 	if o.timeout < 500*time.Millisecond {
 		o.timeout = 500 * time.Millisecond
@@ -349,28 +514,57 @@ func HistoryHook(store *history.Store) func(*model.Report, *model.TargetReport) 
 	}
 }
 
-func writeReport(rep *model.Report, format, path string) (string, error) {
+// writeReports écrit un fichier par format dans dir (jalon-AAAAMMJJ-HHMMSS.<ext>),
+// ou dans path s'il est donné (un seul format).
+func writeReports(rep *model.Report, formats []string, dir, path string) ([]string, error) {
+	var out []string
+	base := "jalon-" + rep.Started.Format("20060102-150405")
 	if path == "" {
-		path = "jalon-" + rep.Started.Format("20060102-150405") + "." + format
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return nil, err
+		}
 	}
+	for _, format := range formats {
+		p := path
+		if p == "" {
+			ext := format
+			if format == "ticket" {
+				ext = "txt"
+			}
+			p = filepath.Join(dir, base+"."+ext)
+		}
+		if err := writeReport(rep, format, p); err != nil {
+			return out, err
+		}
+		abs, _ := filepath.Abs(p)
+		out = append(out, abs)
+	}
+	return out, nil
+}
+
+func writeReport(rep *model.Report, format, path string) error {
 	f, err := os.Create(path)
 	if err != nil {
-		return "", err
+		return err
 	}
-	defer f.Close()
 	switch format {
 	case "html":
 		err = report.HTML(f, rep)
 	case "md":
 		report.Markdown(f, rep)
+	case "ticket":
+		for _, t := range rep.Targets {
+			if t != nil {
+				fmt.Fprintln(f, report.Ticket(rep, t))
+			}
+		}
 	default:
 		err = report.JSON(f, rep)
 	}
-	if err != nil {
-		return "", err
+	if cerr := f.Close(); err == nil {
+		err = cerr
 	}
-	abs, _ := filepath.Abs(path)
-	return abs, nil
+	return err
 }
 
 func isTTY(w io.Writer) bool {
@@ -424,11 +618,12 @@ func padR(s string, n int) string {
 	return s + strings.Repeat(" ", n-len(r))
 }
 
-func cmdHistory(o cliOpts, l i18n.Lang, args []string, stdout, stderr io.Writer) int {
-	store, err := history.Open(o.historyDir)
+func cmdHistory(a *app, args []string, stdout, stderr io.Writer) int {
+	l := a.l
+	store, err := a.openStore()
 	if err != nil {
 		fmt.Fprintln(stderr, err)
-		return 2
+		return exitUsage
 	}
 	if len(args) > 0 && args[0] == "purge" {
 		age := 30 * 24 * time.Hour
@@ -436,14 +631,14 @@ func cmdHistory(o cliOpts, l i18n.Lang, args []string, stdout, stderr io.Writer)
 			d, err := parseAge(args[1])
 			if err != nil {
 				fmt.Fprintln(stderr, i18n.T(l, "cli.bad_age", args[1]))
-				return 2
+				return exitUsage
 			}
 			age = d
 		}
 		n, err := store.Purge(age)
 		if err != nil {
 			fmt.Fprintln(stderr, err)
-			return 2
+			return exitUsage
 		}
 		fmt.Fprintln(stdout, i18n.T(l, "cli.purged", n, store.Dir))
 		return 0
@@ -453,7 +648,7 @@ func cmdHistory(o cliOpts, l i18n.Lang, args []string, stdout, stderr io.Writer)
 		filter = args[0]
 	}
 	list := store.List(filter)
-	if o.jsonOut {
+	if a.o.jsonOut {
 		return printJSON(stdout, list)
 	}
 	fmt.Fprintln(stdout, i18n.T(l, "cli.history_dir", store.Dir))
@@ -480,38 +675,39 @@ func parseAge(s string) (time.Duration, error) {
 	return time.ParseDuration(s)
 }
 
-func cmdDiff(o cliOpts, l i18n.Lang, args []string, stdout, stderr io.Writer) int {
+func cmdDiff(a *app, args []string, stdout, stderr io.Writer) int {
+	l := a.l
 	if len(args) != 2 {
 		fmt.Fprintln(stderr, i18n.T(l, "cli.diff_usage"))
-		return 2
+		return exitUsage
 	}
-	store, err := history.Open(o.historyDir)
+	store, err := a.openStore()
 	if err != nil {
 		fmt.Fprintln(stderr, err)
-		return 2
+		return exitUsage
 	}
-	a, err := store.Load(args[0])
+	ea, err := store.Load(args[0])
 	if err != nil {
 		fmt.Fprintln(stderr, err)
-		return 2
+		return exitUsage
 	}
-	b, err := store.Load(args[1])
+	eb, err := store.Load(args[1])
 	if err != nil {
 		fmt.Fprintln(stderr, err)
-		return 2
+		return exitUsage
 	}
-	if a.Time.After(b.Time) {
-		a, b = b, a
+	if ea.Time.After(eb.Time) {
+		ea, eb = eb, ea
 	}
-	changes := history.Compare(a.Report, b.Report)
-	if o.jsonOut {
-		return printJSON(stdout, map[string]any{"from": a.ID, "to": b.ID, "changes": changes})
+	changes := history.Compare(ea.Report, eb.Report)
+	if a.o.jsonOut {
+		return printJSON(stdout, map[string]any{"from": ea.ID, "to": eb.ID, "changes": changes})
 	}
-	fmt.Fprintln(stdout, i18n.T(l, "cli.diff_header", a.ID, a.Raw, b.ID, b.Raw))
-	if a.TargetKey != b.TargetKey {
+	fmt.Fprintln(stdout, i18n.T(l, "cli.diff_header", ea.ID, ea.Raw, eb.ID, eb.Raw))
+	if ea.TargetKey != eb.TargetKey {
 		fmt.Fprintln(stdout, i18n.T(l, "cli.diff_other_target"))
 	}
-	if a.Network != b.Network {
+	if ea.Network != eb.Network {
 		fmt.Fprintln(stdout, i18n.T(l, "text.other_network"))
 	}
 	if len(changes) == 0 {
@@ -520,6 +716,6 @@ func cmdDiff(o cliOpts, l i18n.Lang, args []string, stdout, stderr io.Writer) in
 	for _, c := range changes {
 		fmt.Fprintf(stdout, "%s %s\n", report.Icon(c.Severity), c.Msg.In(l))
 	}
-	fmt.Fprintf(stdout, "\n%s → %s\n", a.Report.Verdict.Headline.In(l), b.Report.Verdict.Headline.In(l))
+	fmt.Fprintf(stdout, "\n%s → %s\n", ea.Report.Verdict.Headline.In(l), eb.Report.Verdict.Headline.In(l))
 	return 0
 }

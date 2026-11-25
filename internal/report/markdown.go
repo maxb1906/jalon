@@ -21,6 +21,16 @@ func Markdown(w io.Writer, rep *model.Report) {
 	p("# %s", i18n.T(l, "html.title"))
 	p("")
 	p("%s", i18n.T(l, "html.generated", rep.Version, fmtTime(rep.Started)))
+	if rep.Technician != "" {
+		p("")
+		p("%s", mdEsc(i18n.T(l, "html.technician", rep.Technician)))
+	}
+	if is := rep.Issuer; is != nil {
+		if who := strings.Join(nonEmpty(is.Company, is.Name, is.Contact), " · "); who != "" {
+			p("")
+			p("%s", mdEsc(who))
+		}
+	}
 	if e := rep.Env; e != nil {
 		p("")
 		p("%s", mdEsc(i18n.T(l, "text.host", e.Hostname, e.OS, firstNon(e.LocalIPv4, e.LocalIPv6, "-"),
@@ -115,6 +125,10 @@ func Markdown(w io.Writer, rep *model.Report) {
 		fmt.Fprint(w, Ticket(rep, t))
 		p("```")
 	}
+	if rep.Issuer != nil && rep.Issuer.Legal != "" {
+		p("")
+		p("%s", mdEsc(rep.Issuer.Legal))
+	}
 }
 
 func mdSteps(w io.Writer, l i18n.Lang, steps []model.Step) {
@@ -126,4 +140,15 @@ func mdSteps(w io.Writer, l i18n.Lang, steps []model.Step) {
 		}
 		fmt.Fprintf(w, "| %s | %s | %s |\n", Icon(s.Status), i18n.T(l, s.Layer), cell)
 	}
+}
+
+// nonEmpty renvoie les chaînes non vides, dans l'ordre.
+func nonEmpty(s ...string) []string {
+	var out []string
+	for _, v := range s {
+		if v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
 }

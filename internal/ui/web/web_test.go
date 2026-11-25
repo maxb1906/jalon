@@ -107,3 +107,17 @@ func TestI18nEndpoint(t *testing.T) {
 		t.Errorf("%q", m["web.run"])
 	}
 }
+
+func TestGuardPort(t *testing.T) {
+	s, ts := newTest(t)
+	s.port = ts.Listener.Addr().(*net.TCPAddr).Port
+	r, err := http.Get(ts.URL + "/?t=" + s.Token())
+	if err != nil || r.StatusCode != 200 {
+		t.Fatalf("bon port : %v %v", err, r)
+	}
+	req, _ := http.NewRequest("GET", ts.URL+"/?t="+s.Token(), nil)
+	req.Host = fmt.Sprintf("127.0.0.1:%d", s.port+1)
+	if r, _ = http.DefaultClient.Do(req); r.StatusCode != 403 {
+		t.Errorf("autre port : %d", r.StatusCode)
+	}
+}
