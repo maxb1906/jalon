@@ -29,3 +29,9 @@ func pause(msg string) {
 	fmt.Fprint(os.Stderr, "\n"+msg)
 	_, _ = bufio.NewReader(os.Stdin).ReadString('\n')
 }
+
+// hideConsole détache le processus de sa console : lancé par double-clic,
+// la fenêtre noire disparaît et seule l'interface graphique reste.
+func hideConsole() {
+	_, _, _ = windows.NewLazySystemDLL("kernel32.dll").NewProc("FreeConsole").Call()
+}

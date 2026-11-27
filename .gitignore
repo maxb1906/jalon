@@ -6,3 +6,8 @@
 /jalon-*.html
 /jalon-*.md
 /jalon-*.json
+/cmd/jalon/rsrc_windows_*.syso
+/frontend/node_modules/
+/frontend/dist/*
+!/frontend/dist/.gitkeep
+/frontend/src/lib/mock/catalog.*.json

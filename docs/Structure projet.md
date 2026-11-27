@@ -1,6 +1,6 @@
 # Jalon — Diagnostic de connectivité et traceroute applicatif
 
-> **Statut : v1 développée (jalons 1 à 17 terminés), en attente de validation avant publication.**
+> **Statut : v1.0.1 publiée ; v1.1 (jalon 18 : interface graphique Wails sous Windows) développée, en attente de validation avant publication.**
 > Même famille qu'[[Arpent]] (audit réseau) et [[Aplomb]] (audit Windows) : exe portable, lecture seule, rapports exportables.
 > Ce fichier consigne tous les choix et sert de suivi d'implémentation pour Claude Code.
 
@@ -9,7 +9,7 @@
 | Sujet | Choix |
 |---|---|
 | Nom | **Jalon** |
-| Interfaces | CLI + TUI + UI web locale (`jalon --web`) |
+| Interfaces | CLI + TUI + UI web locale (`jalon --web`) + interface graphique Wails sous Windows (`jalon --gui`, double-clic) |
 | HTTP/3 | Dès la v1 |
 | Proxy transparent | 100 % autonome, aucun service externe à moi (pas d'endpoint écho sur le VPS) |
 | Traceroute TCP SYN par saut | En v1, activé seulement si les droits sont disponibles (admin / root, Npcap sous Windows) |
@@ -143,6 +143,12 @@ Règle commune : **aucune authentification, aucune commande qui modifie un état
 - Saisie de la ou des cibles, suivi en direct (Server-Sent Events), consultation et comparaison de l'historique, export des rapports
 - Fichiers web embarqués dans le binaire (`embed`), aucun CDN externe
 
+### Interface graphique (Windows, v1.1)
+- Même exe : `jalon --gui`, ou **double-clic sur `jalon.exe`** (la console se détache, seule la fenêtre reste)
+- Wails v2 + WebView2, pur Go sous Windows (pas de cgo) ; frontend Svelte 5 + Vite + TypeScript embarqué (`frontend/dist`)
+- Même périmètre que l'UI web : saisie des cibles et options, cascade en direct, tableau de synthèse multi-cible, verdict, chemin réseau live, décomposition des temps HTTP, changements depuis le dernier diagnostic, historique (affichage, comparaison), aperçu du rapport HTML, export HTML / Markdown / JSON / ticket via la boîte « Enregistrer sous », résumé ticket copié dans le presse-papiers
+- Replis : sans WebView2 ou hors Windows, `--gui` ouvre l'UI web locale dans le navigateur (Wails exigerait cgo sous Linux et macOS)
+
 ### Rapports
 - HTML autonome, Markdown, JSON (même style qu'Arpent / Aplomb)
 - **Résumé ticket** : 5 à 10 lignes en texte brut, copiable, sans jargon inutile
@@ -165,6 +171,7 @@ Règle commune : **aucune authentification, aucune commande qui modifie un état
 | LDAP StartTLS | `github.com/go-ldap/ldap/v3` |
 | TUI | `charmbracelet/bubbletea` + `lipgloss` |
 | UI web | `net/http`, `html/template`, `embed`, SSE, JS vanilla |
+| Interface graphique | Wails v2 (WebView2, Windows, sans cgo) + Svelte 5 / Vite / TypeScript ; ressources de l'exe (icône, manifeste DPI) via `tc-hib/winres` |
 | Bundle CA Mozilla | `golang.org/x/crypto/x509roots/fallback` |
 | i18n | catalogues FR/EN embarqués |
 
@@ -186,7 +193,12 @@ internal/history/     stockage JSON, diff
 internal/report/      html, md, json, ticket
 internal/ui/tui/      bubbletea
 internal/ui/web/      serveur local + assets embarqués
+internal/ui/session/  logique partagée UI web / interface graphique (demande, exports, historique)
+internal/gui/         interface graphique : objet lié au frontend (testable sous Linux) + fenêtre Wails (_windows.go)
 internal/i18n/        fr, en
+frontend/             interface graphique Svelte (compilée dans frontend/dist, embarquée sous Windows)
+tools/winres          icône, manifeste et version de l'exe Windows
+tools/guimock         catalogues pour le mode démonstration du frontend (npm run dev)
 ```
 
 ## 6. Jalons de développement
@@ -207,12 +219,14 @@ internal/i18n/        fr, en
 15. [x] Rapports HTML / Markdown
 16. [x] i18n FR/EN complète
 17. [x] Builds Windows / Linux / macOS (amd64 + arm64), release GitHub, README
+18. [x] Interface graphique Wails (Windows) : fenêtre native au double-clic, mêmes fonctions que l'UI web, repli sur l'UI web (v1.1)
 
 ### Écarts et précisions d'implémentation
 - **TCP SYN par saut sous Windows** : implémenté sans Npcap, par `connect()` avec TTL réduit + socket ICMP raw (droits administrateur). Npcap n'est pas requis ; sa présence est seulement détectée et affichée. À valider sur une vraie machine Windows (pare-feu Windows et réception des « TTL expiré »).
 - **Traceroute ICMPv6 sous Windows** : non pris en charge en v1 (IPv4 via `IcmpSendEcho`) ; le mode est affiché « non disponible ».
 - **TTL du SYN-ACK** (heuristique proxy transparent) : Linux en root / `CAP_NET_RAW` uniquement ; ailleurs, signalé comme non disponible.
 - **Proxy configuré** : signalé dans le rapport ; les tests HTTP se font en connexion directe.
+- **Interface graphique (jalon 18)** : Windows uniquement, pour rester sans cgo (Wails utilise WebKitGTK / WKWebView sous Linux / macOS). L'exe reste en sous-système console (la CLI écrit normalement) ; au double-clic, la console est détachée (`FreeConsole`) dès l'ouverture de la fenêtre. Le cache WebView2 va dans le cache utilisateur (`%LOCALAPPDATA%\Jalon\WebView2`), pas à côté de l'exe. La logique (`internal/gui`) est testée sous Linux et le runtime Wails a été validé de bout en bout sous Linux (webkit2gtk, Xvfb) avec un harnais temporaire ; reste à valider sur un vrai Windows : ouverture au double-clic, disparition de la console, boîte « Enregistrer sous », ouverture du rapport dans le navigateur et du dossier d'historique, repli sans WebView2 (Windows Server 2016-2022), `jalon.exe --gui-smoke`.
 
 ## 7. Risques
 - Faux positifs du traceroute (routeurs qui limitent l'ICMP) → le verdict raisonne sur la propagation de la perte, pas sur un saut isolé
@@ -221,7 +235,7 @@ internal/i18n/        fr, en
 - Sondes captives qui dépendent de services Google/Microsoft/Apple → au moins deux sources, verdict prudent
 - Heuristiques de proxy transparent sans serveur externe → moins fiables qu'un écho ; toujours formulées en « probable »
 - Sondes de protocoles : rester strictement en négociation, pour ne pas déclencher de blocage (fail2ban, verrouillage de compte)
-- Taille du binaire (quic-go + bubbletea + assets web) : à surveiller, viser < 25 Mo
+- Taille du binaire (quic-go + bubbletea + assets web + Wails) : à surveiller, viser < 25 Mo (v1.1 : 18,7 Mo pour windows/amd64)
 
 ## 8. Nom
 **Jalon** : en arpentage, les jalons sont les piquets plantés le long d'un tracé pour vérifier chaque point du chemin, exactement ce que fait l'outil, saut par saut et couche par couche. Paire naturelle avec **Arpent**. Court, prononçable en FR et EN, commande `jalon` agréable à taper.

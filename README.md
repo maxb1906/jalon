@@ -23,18 +23,21 @@ En sortie : un **verdict** en tête (« Le DNS local renvoie une IP différente 
 Un seul exécutable portable, sans dépendance. Téléchargez celui de votre plateforme dans les [releases](https://github.com/maxb1906/jalon/releases) (Windows, Linux, macOS ; amd64 et arm64) ou compilez :
 
 ```sh
-go build -o jalon ./cmd/jalon        # Go ≥ 1.27
-scripts/build.sh 1.0.0               # les 6 plateformes dans dist/, sans cgo
+go build -o jalon ./cmd/jalon        # Go ≥ 1.27 (CLI, TUI, interface web)
+scripts/build.sh 1.1.0               # les 6 plateformes dans dist/, sans cgo ; Node.js LTS requis pour l'interface graphique
 ```
 
 ## Utilisation
 
-**Sous Windows, un double-clic sur `jalon.exe` ouvre l'interface web** dans le navigateur (la fenêtre noire doit rester ouverte pendant l'utilisation). Pour la ligne de commande, ouvrir un terminal (PowerShell ou `cmd`) dans le dossier de l'exe :
+**Sous Windows, un double-clic sur `jalon.exe` ouvre l'interface graphique** : une fenêtre native (Wails + WebView2) avec la cascade en direct, le tableau de synthèse multi-cible, le chemin réseau live, l'historique et sa comparaison, l'aperçu du rapport, l'export (HTML, Markdown, JSON) et le résumé ticket copié en un clic. Sans le composant WebView2 (Windows Server 2016 à 2022), Jalon ouvre à la place l'interface web dans le navigateur.
+
+Pour la ligne de commande, ouvrir un terminal (PowerShell ou `cmd`) dans le dossier de l'exe :
 
 ```sh
 jalon https://exemple.be
 jalon smtp://mail.exemple.be imaps://mail.exemple.be 10.0.0.5:3389
 jalon -f cibles.txt --report html          # une cible par ligne, # = commentaire
+jalon --gui                                # interface graphique (Windows ; ailleurs : interface web)
 jalon --tui https://exemple.be             # interface terminal : cascade + MTR live
 jalon --web                                # interface web locale (127.0.0.1, jeton)
 jalon --json exemple.be > rapport.json
@@ -80,14 +83,21 @@ Chaque diagnostic est enregistré en JSON dans `jalon-history/` **à côté de l
 
 `jalon --web` écoute uniquement sur `127.0.0.1`, sur un port aléatoire, avec un jeton dans l'URL (contrôle de l'en-tête `Host` contre le DNS rebinding). Saisie des cibles, suivi en direct (Server-Sent Events), historique, comparaison et export (HTML, Markdown, JSON, ticket). Tous les fichiers sont embarqués : aucun CDN.
 
+### Interface graphique
+
+`jalon --gui` (ou double-clic sous Windows) ouvre la fenêtre Jalon : mêmes fonctions que l'interface web, sans navigateur ni serveur local. Elle n'existe que sous Windows, où Wails se compile sans cgo ; sous Linux et macOS, `--gui` ouvre l'interface web. Le cache de WebView2 est placé dans `%LOCALAPPDATA%\Jalon\WebView2`.
+
 ## Développement
 
 ```sh
 go vet ./... && go test ./...
+GOOS=windows go vet -tags desktop,production ./...     # code de la fenêtre Wails
 go test -tags live -run TestLive -v ./internal/probe/   # tests contre le vrai réseau
 ```
 
-Architecture : `internal/engine` (cascade + bus d'événements), `internal/probe` (env, dns, tcp, tls, http, http3, trace, captive, proxy), `internal/probe/proto` (smtp, imap, pop3, ssh, rdp, ldap, ftp, banner), `internal/verdict` (règles testées une à une), `internal/history`, `internal/report`, `internal/ui/tui`, `internal/ui/web`, `internal/i18n`. Cahier des charges : [`docs/Structure projet.md`](docs/Structure%20projet.md).
+Interface graphique (`frontend/`, Svelte 5 + Vite + TypeScript) : `cd frontend && npm ci && npm run build` produit `frontend/dist`, embarqué dans l'exe Windows (`go build -tags desktop,production`). Pour la voir dans un navigateur sans Windows : `go run ./tools/guimock` puis `cd frontend && npm run dev` (diagnostic de démonstration rejoué).
+
+Architecture : `internal/engine` (cascade + bus d'événements), `internal/gui` + `frontend/` (interface graphique Wails), `internal/ui/session` (logique partagée des interfaces), `internal/probe` (env, dns, tcp, tls, http, http3, trace, captive, proxy), `internal/probe/proto` (smtp, imap, pop3, ssh, rdp, ldap, ftp, banner), `internal/verdict` (règles testées une à une), `internal/history`, `internal/report`, `internal/ui/tui`, `internal/ui/web`, `internal/i18n`. Cahier des charges : [`docs/Structure projet.md`](docs/Structure%20projet.md).
 
 ## Licence
 
@@ -103,6 +113,9 @@ Jalon takes one or more targets and runs a cascade of read-only tests — local 
 jalon --lang en https://example.com smtp://mail.example.com 10.0.0.5:3389
 jalon --tui example.com      # terminal UI with live MTR
 jalon --web                  # local web UI on 127.0.0.1
+jalon --gui                  # graphical interface (Windows; elsewhere: web UI)
 ```
+
+On Windows, double-clicking `jalon.exe` opens a native window (Wails + WebView2) with the live cascade, multi-target summary, live network path, history and comparison, report preview, export and one-click ticket summary. Without the WebView2 runtime, the local web UI opens in the browser instead.
 
 Exit codes: `0` OK, `1` warning, `2` failure. Jalon never authenticates, never changes anything and relies on no server of its own. Licensed under GPL-3.0.

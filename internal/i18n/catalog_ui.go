@@ -64,6 +64,7 @@ Usage :
   jalon [options] cible [cible…]      ex. https://exemple.be  smtp://mail.exemple.be  10.0.0.5:3389
   jalon -f cibles.txt                 une cible par ligne (# = commentaire)
   jalon --tui cible…                  interface terminal (cascade + MTR live)
+  jalon --gui                         interface graphique (Windows ; double-clic sur l'exe)
   jalon --web                         interface web locale (127.0.0.1)
   jalon history [filtre]              liste l'historique ; « history purge 30d » purge
   jalon diff <id1> <id2>              compare deux diagnostics
@@ -76,6 +77,7 @@ Usage:
   jalon [options] target [target…]    e.g. https://example.com  smtp://mail.example.com  10.0.0.5:3389
   jalon -f targets.txt                one target per line (# = comment)
   jalon --tui target…                 terminal interface (cascade + live MTR)
+  jalon --gui                         graphical interface (Windows; double-click the exe)
   jalon --web                         local web interface (127.0.0.1)
   jalon history [filter]              list history; "history purge 30d" purges
   jalon diff <id1> <id2>              compare two diagnoses
@@ -98,6 +100,8 @@ Options:`},
 	"flag.parallel-trace": {"ne pas sérialiser les traceroutes entre cibles", "do not serialize traceroutes across targets"},
 	"flag.no-history":     {"ne pas enregistrer ni comparer l'historique", "do not record or compare history"},
 	"flag.history-dir":    {"dossier d'historique (défaut : jalon-history à côté de l'exécutable)", "history folder (default: jalon-history next to the executable)"},
+	"flag.gui":            {"ouvrir l'interface graphique (Windows)", "open the graphical interface (Windows)"},
+	"flag.gui-smoke":      {"test de lancement : ferme l'interface graphique dès qu'elle est prête", "launch test: close the graphical interface as soon as it is ready"},
 	"flag.web":            {"lancer l'interface web locale", "start the local web interface"},
 	"flag.no-browser":     {"avec --web : ne pas ouvrir le navigateur", "with --web: do not open the browser"},
 	"flag.tui":            {"lancer l'interface terminal", "start the terminal interface"},

@@ -9,7 +9,7 @@ import (
 )
 
 // Version de l'outil (remplacée au build via -ldflags).
-var Version = "1.0.0"
+var Version = "1.1.0"
 
 // Status est l'état d'une étape.
 type Status string

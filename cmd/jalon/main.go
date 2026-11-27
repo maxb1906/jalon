@@ -33,12 +33,13 @@ func main() {
 	args := os.Args[1:]
 	dc := doubleClicked()
 	if dc && len(args) == 0 {
-		// Double clic sous Windows : sans cible, on ouvre l'interface web
-		// plutôt que d'afficher l'aide dans une fenêtre qui se referme.
-		args = []string{"--web"}
+		// Double clic sous Windows : sans cible, on ouvre l'interface
+		// graphique plutôt que d'afficher l'aide dans une fenêtre qui se
+		// referme (repli : interface web).
+		args = []string{"--gui"}
 	}
-	code := run(args, os.Stdout, os.Stderr)
-	if dc && code != 0 {
+	code := run(args, dc, os.Stdout, os.Stderr)
+	if dc && code != 0 && !guiShown {
 		pause(i18n.T(langFromArgs(args), "cli.press_enter"))
 	}
 	os.Exit(code)
@@ -60,6 +61,8 @@ type cliOpts struct {
 	noHistory  bool
 	historyDir string
 	web        bool
+	gui        bool
+	guiSmoke   bool
 	tui        bool
 	noRDNS     bool
 	asn        bool
@@ -95,6 +98,8 @@ func newFlagSet(o *cliOpts, l i18n.Lang, stderr io.Writer) *flag.FlagSet {
 	fs.BoolVar(&o.parallelTr, "parallel-trace", false, h("parallel-trace"))
 	fs.BoolVar(&o.noHistory, "no-history", false, h("no-history"))
 	fs.StringVar(&o.historyDir, "history-dir", "", h("history-dir"))
+	fs.BoolVar(&o.gui, "gui", false, h("gui"))
+	fs.BoolVar(&o.guiSmoke, "gui-smoke", false, h("gui-smoke"))
 	fs.BoolVar(&o.web, "web", false, h("web"))
 	fs.BoolVar(&o.noBrowser, "no-browser", false, h("no-browser"))
 	fs.BoolVar(&o.tui, "tui", false, h("tui"))
@@ -152,7 +157,7 @@ func langFromArgs(args []string) i18n.Lang {
 	return i18n.Detect()
 }
 
-func run(args []string, stdout, stderr io.Writer) int {
+func run(args []string, dc bool, stdout, stderr io.Writer) int {
 	l := langFromArgs(args)
 	var o cliOpts
 	fs := newFlagSet(&o, l, stderr)
@@ -207,6 +212,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 		opt.PostTarget = HistoryHook(store)
 	}
 
+	if o.gui || o.guiSmoke {
+		return runGUI(o, opt, store, l, dc, stdout, stderr)
+	}
 	if o.web {
 		return web.Serve(web.Config{Options: opt, Store: store, Lang: l, OpenBrowser: !o.noBrowser, Out: stdout, Proto: o.proto})
 	}

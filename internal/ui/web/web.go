@@ -5,7 +5,6 @@
 package web
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/subtle"
@@ -31,7 +30,7 @@ import (
 	"github.com/maxb1906/jalon/internal/i18n"
 	"github.com/maxb1906/jalon/internal/model"
 	"github.com/maxb1906/jalon/internal/report"
-	"github.com/maxb1906/jalon/internal/target"
+	"github.com/maxb1906/jalon/internal/ui/session"
 )
 
 //go:embed assets
@@ -213,26 +212,11 @@ func writeJSON(w http.ResponseWriter, v any) {
 }
 
 func (s *Server) apiI18n(w http.ResponseWriter, r *http.Request) {
-	l := s.lang(r)
-	out := map[string]string{}
-	for _, k := range i18n.Keys() {
-		out[k] = i18n.T(l, k)
-	}
-	writeJSON(w, out)
-}
-
-type runReq struct {
-	Targets   string `json:"targets"`
-	Proto     string `json:"proto"`
-	TraceMode string `json:"trace_mode"`
-	NoTrace   bool   `json:"no_trace"`
-	IPv4      bool   `json:"ipv4"`
-	IPv6      bool   `json:"ipv6"`
-	Lang      string `json:"lang"`
+	writeJSON(w, session.Catalog(s.lang(r)))
 }
 
 func (s *Server) apiRun(w http.ResponseWriter, r *http.Request) {
-	var req runReq
+	var req session.Request
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&req); err != nil {
 		http.Error(w, err.Error(), 400)
 		return
@@ -241,41 +225,10 @@ func (s *Server) apiRun(w http.ResponseWriter, r *http.Request) {
 	if pl, ok := i18n.Parse(req.Lang); ok {
 		l = pl
 	}
-	raws, _ := target.ReadList(strings.NewReader(strings.ReplaceAll(req.Targets, ",", "\n")))
-	if len(raws) == 0 {
-		http.Error(w, i18n.T(l, "web.no_target"), 400)
+	targets, opt, err := session.Prepare(s.cfg.Options, req, s.cfg.Proto, l)
+	if err != nil {
+		http.Error(w, err.Error(), 400)
 		return
-	}
-	if len(raws) > 50 {
-		raws = raws[:50]
-	}
-	proto := req.Proto
-	if proto == "" {
-		proto = s.cfg.Proto
-	}
-	var targets []model.Target
-	for _, raw := range raws {
-		t, err := target.Parse(raw, proto)
-		if err != nil {
-			http.Error(w, i18n.T(l, "engine.target_error", raw+" : "+err.Error()), 400)
-			return
-		}
-		targets = append(targets, t)
-	}
-	opt := s.cfg.Options
-	opt.Lang = l
-	if req.NoTrace {
-		opt.NoTrace = true
-	}
-	switch req.TraceMode {
-	case "icmp", "tcp", "auto":
-		opt.TraceMode = req.TraceMode
-	}
-	if req.IPv4 && !req.IPv6 {
-		opt.IPv4Only, opt.IPv6Only = true, false
-	}
-	if req.IPv6 && !req.IPv4 {
-		opt.IPv6Only, opt.IPv4Only = true, false
 	}
 	b := make([]byte, 6)
 	_, _ = rand.Read(b)
@@ -368,31 +321,12 @@ func (s *Server) apiEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeExport(w http.ResponseWriter, rep *model.Report, format, name string) {
-	var buf bytes.Buffer
-	var ctype, ext string
-	switch format {
-	case "html":
-		_ = report.HTML(&buf, rep)
-		ctype, ext = "text/html; charset=utf-8", "html"
-	case "md":
-		report.Markdown(&buf, rep)
-		ctype, ext = "text/markdown; charset=utf-8", "md"
-	case "ticket":
-		for _, t := range rep.Targets {
-			if t != nil {
-				buf.WriteString(report.Ticket(rep, t) + "\n")
-			}
-		}
-		ctype, ext = "text/plain; charset=utf-8", "txt"
-	default:
-		_ = report.JSON(&buf, rep)
-		ctype, ext = "application/json; charset=utf-8", "json"
-	}
+	body, ext, ctype := session.Export(rep, format)
 	w.Header().Set("Content-Type", ctype)
 	if format != "html" || name != "" {
-		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.%s"`, firstNon(name, "jalon-"+rep.Started.Format("20060102-150405")), ext))
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.%s"`, firstNon(name, session.BaseName(rep)), ext))
 	}
-	_, _ = w.Write(buf.Bytes())
+	_, _ = w.Write(body)
 }
 
 func firstNon(a, b string) string {
@@ -419,32 +353,13 @@ func (s *Server) apiReport(w http.ResponseWriter, r *http.Request) {
 	cp.Lang = s.lang(r)
 	name := ""
 	if r.URL.Query().Get("download") == "1" {
-		name = "jalon-" + rep.Started.Format("20060102-150405")
+		name = session.BaseName(rep)
 	}
 	writeExport(w, &cp, r.URL.Query().Get("format"), name)
 }
 
 func (s *Server) apiHistory(w http.ResponseWriter, r *http.Request) {
-	if s.cfg.Store == nil {
-		writeJSON(w, []any{})
-		return
-	}
-	l := s.lang(r)
-	type item struct {
-		history.Meta
-		Text string `json:"text"`
-	}
-	var out []item
-	for _, m := range s.cfg.Store.List(r.URL.Query().Get("q")) {
-		out = append(out, item{m, m.Headline.In(l)})
-		if len(out) >= 500 {
-			break
-		}
-	}
-	if out == nil {
-		out = []item{}
-	}
-	writeJSON(w, out)
+	writeJSON(w, session.HistoryList(s.cfg.Store, r.URL.Query().Get("q"), s.lang(r)))
 }
 
 func (s *Server) apiHistoryReport(w http.ResponseWriter, r *http.Request) {
@@ -457,9 +372,7 @@ func (s *Server) apiHistoryReport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 404)
 		return
 	}
-	rep := &model.Report{Tool: "jalon", Version: e.Version, Lang: s.lang(r), Started: e.Time, Finished: e.Report.Finished,
-		Env: e.Env, Targets: []*model.TargetReport{e.Report}}
-	rep.ComputeExit()
+	rep := session.HistoryReport(e, s.lang(r))
 	name := ""
 	if r.URL.Query().Get("download") == "1" {
 		name = e.ID
@@ -468,35 +381,10 @@ func (s *Server) apiHistoryReport(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) apiDiff(w http.ResponseWriter, r *http.Request) {
-	if s.cfg.Store == nil {
-		http.NotFound(w, r)
-		return
-	}
-	a, err1 := s.cfg.Store.Load(r.URL.Query().Get("a"))
-	b, err2 := s.cfg.Store.Load(r.URL.Query().Get("b"))
-	if err1 != nil || err2 != nil {
+	d, err := session.Diff(s.cfg.Store, r.URL.Query().Get("a"), r.URL.Query().Get("b"), s.lang(r))
+	if err != nil {
 		http.Error(w, "not found", 404)
 		return
 	}
-	if a.Time.After(b.Time) {
-		a, b = b, a
-	}
-	l := s.lang(r)
-	type ch struct {
-		model.Change
-		Text string `json:"text"`
-	}
-	var changes []ch
-	for _, c := range history.Compare(a.Report, b.Report) {
-		changes = append(changes, ch{c, c.Msg.In(l)})
-	}
-	if changes == nil {
-		changes = []ch{}
-	}
-	writeJSON(w, map[string]any{
-		"from": a.ID, "to": b.ID, "from_raw": a.Raw, "to_raw": b.Raw,
-		"same_target": a.TargetKey == b.TargetKey, "same_network": a.Network == b.Network,
-		"from_verdict": a.Report.Verdict.Headline.In(l), "to_verdict": b.Report.Verdict.Headline.In(l),
-		"changes": changes,
-	})
+	writeJSON(w, d)
 }

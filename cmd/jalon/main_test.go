@@ -32,19 +32,19 @@ func TestParseAge(t *testing.T) {
 
 func TestRunErrors(t *testing.T) {
 	var out, errb bytes.Buffer
-	if c := run([]string{"--version"}, &out, &errb); c != 0 || !strings.Contains(out.String(), "jalon") {
+	if c := run([]string{"--version"}, false, &out, &errb); c != 0 || !strings.Contains(out.String(), "jalon") {
 		t.Errorf("version %d", c)
 	}
-	if c := run([]string{"--trace-mode", "x", "a.test"}, &out, &errb); c != 2 {
+	if c := run([]string{"--trace-mode", "x", "a.test"}, false, &out, &errb); c != 2 {
 		t.Errorf("mode invalide %d", c)
 	}
-	if c := run([]string{"--no-history", "gopher://x"}, &out, &errb); c != 2 {
+	if c := run([]string{"--no-history", "gopher://x"}, false, &out, &errb); c != 2 {
 		t.Errorf("cible invalide %d", c)
 	}
-	if c := run([]string{"--lang", "de"}, &out, &errb); c != 2 {
+	if c := run([]string{"--lang", "de"}, false, &out, &errb); c != 2 {
 		t.Errorf("langue invalide %d", c)
 	}
-	if c := run([]string{"history", "--history-dir", t.TempDir()}, &out, &errb); c != 0 {
+	if c := run([]string{"history", "--history-dir", t.TempDir()}, false, &out, &errb); c != 0 {
 		t.Errorf("history %d", c)
 	}
 }

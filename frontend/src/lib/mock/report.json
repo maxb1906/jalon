@@ -1,0 +1,1183 @@
+{
+ "captive": {
+  "captive": "no",
+  "checks": [
+   {
+    "expected": "HTTP 204",
+    "match": true,
+    "status": 204,
+    "url": "http://connectivitycheck.gstatic.com/generate_204"
+   },
+   {
+    "expected": "200 « Microsoft Connect Test »",
+    "match": true,
+    "status": 200,
+    "url": "http://www.msftconnecttest.com/connecttest.txt"
+   },
+   {
+    "expected": "200 « Success »",
+    "headers": [
+     {
+      "label": "Via",
+      "value": "http/1.1 defra1-edge-fx-013.ts.apple.com (acdn/1.17758)"
+     },
+     {
+      "label": "X-Cache",
+      "value": "hit-fresh"
+     }
+    ],
+    "match": true,
+    "status": 200,
+    "url": "http://captive.apple.com/hotspot-detect.html"
+   }
+  ],
+  "duration_ms": 2501.46,
+  "status": "ok",
+  "summary": {
+   "key": "captive.none"
+  },
+  "transparent_proxy": "no"
+ },
+ "dns_global": {
+  "cloudflare_pop": "fra10",
+  "cloudflare_pop_doh": "fra14",
+  "dnssec_ad": false,
+  "duration_ms": 103.08,
+  "google_egress": "172.253.1.212",
+  "google_egress_doh": "172.253.1.211",
+  "intercepted": false,
+  "notes": [
+   {
+    "msg": {
+     "args": [
+      "fra10"
+     ],
+     "key": "dnsg.cf_pop"
+    },
+    "status": "info"
+   },
+   {
+    "msg": {
+     "args": [
+      "172.253.1.212",
+      "172.253.1.211"
+     ],
+     "key": "dnsg.google_egress"
+    },
+    "status": "info"
+   },
+   {
+    "msg": {
+     "args": [
+      "203.0.113.42"
+     ],
+     "key": "dnsg.public_ip"
+    },
+    "status": "info"
+   }
+  ],
+  "nx_hijack": false,
+  "nx_name": "jalon-6emq6oopzx40mg.com",
+  "status": "ok",
+  "summary": {
+   "key": "dnsg.ok"
+  },
+  "udp_vs_doh": [
+   {
+    "a": [
+     "104.20.23.154",
+     "172.66.147.243"
+    ],
+    "aaaa": [
+     "2606:4700:10::6814:179a",
+     "2606:4700:10::ac42:93f3"
+    ],
+    "ad": true,
+    "rcode": "NOERROR",
+    "resolver": "1.1.1.1",
+    "rtt_ms": 2.41,
+    "server": "1.1.1.1",
+    "transport": "udp",
+    "ttl": 103
+   },
+   {
+    "a": [
+     "104.20.23.154",
+     "172.66.147.243"
+    ],
+    "aaaa": [
+     "2606:4700:10::6814:179a",
+     "2606:4700:10::ac42:93f3"
+    ],
+    "ad": true,
+    "rcode": "NOERROR",
+    "resolver": "1.1.1.1",
+    "rtt_ms": 30.18,
+    "server": "https://1.1.1.1/dns-query",
+    "transport": "doh",
+    "ttl": 59
+   }
+  ],
+  "whoami_cloudflare": "203.0.113.42"
+ },
+ "env": {
+  "status": "ok",
+  "duration_ms": 41.2,
+  "summary": {
+   "key": "env.summary",
+   "args": [
+    "Wi-Fi",
+    "192.168.1.23",
+    "192.168.1.1"
+   ]
+  },
+  "notes": [
+   {
+    "status": "ok",
+    "msg": {
+     "key": "env.gw_ping",
+     "args": [
+      "192.168.1.1",
+      "2.1",
+      "4",
+      "4"
+     ]
+    }
+   },
+   {
+    "status": "info",
+    "msg": {
+     "key": "env.dns",
+     "args": [
+      "192.168.1.1"
+     ]
+    }
+   }
+  ],
+  "hostname": "PC-SUPPORT-07",
+  "os": "windows/amd64",
+  "ifaces": [
+   {
+    "name": "Wi-Fi",
+    "addrs": [
+     "192.168.1.23/24",
+     "2001:db8:42::23/64"
+    ],
+    "mtu": 1500,
+    "default": true
+   }
+  ],
+  "local_ipv4": "192.168.1.23",
+  "local_ipv6": "2001:db8:42::23",
+  "gateways": [
+   "192.168.1.1"
+  ],
+  "dns_servers": [
+   "192.168.1.1"
+  ],
+  "gateway_ping": {
+   "target": "192.168.1.1",
+   "sent": 4,
+   "recv": 4,
+   "min_ms": 1.4,
+   "avg_ms": 2.1,
+   "max_ms": 3.0,
+   "ttl": 64
+  },
+  "privileges": {
+   "admin": false,
+   "icmp_trace": true,
+   "tcp_trace": false,
+   "icmp_method": "IcmpSendEcho",
+   "tcp_reason": {
+    "key": "priv.linux_tcp"
+   }
+  },
+  "public_ip": "203.0.113.42"
+ },
+ "exit_code": 2,
+ "finished": "2026-11-27T00:17:19.050019764Z",
+ "lang": "fr",
+ "started": "2026-11-27T00:17:13.543022164Z",
+ "status": "fail",
+ "targets": [
+  {
+   "chosen_ip": "172.66.147.243",
+   "dns": {
+    "answers": [
+     {
+      "a": [
+       "172.66.147.243",
+       "104.20.23.154"
+      ],
+      "aaaa": [
+       "2606:4700:10::ac42:93f3",
+       "2606:4700:10::6814:179a"
+      ],
+      "rcode": "NOERROR",
+      "resolver": "system",
+      "rtt_ms": 2.36,
+      "server": "127.0.0.53",
+      "transport": "udp",
+      "ttl": 300
+     },
+     {
+      "a": [
+       "104.20.23.154",
+       "172.66.147.243"
+      ],
+      "aaaa": [
+       "2606:4700:10::6814:179a",
+       "2606:4700:10::ac42:93f3"
+      ],
+      "ad": true,
+      "rcode": "NOERROR",
+      "resolver": "1.1.1.1",
+      "rtt_ms": 1.35,
+      "server": "1.1.1.1",
+      "transport": "udp",
+      "ttl": 33
+     },
+     {
+      "a": [
+       "104.20.23.154",
+       "172.66.147.243"
+      ],
+      "aaaa": [
+       "2606:4700:10::ac42:93f3",
+       "2606:4700:10::6814:179a"
+      ],
+      "ad": true,
+      "rcode": "NOERROR",
+      "resolver": "8.8.8.8",
+      "rtt_ms": 1.78,
+      "server": "8.8.8.8",
+      "transport": "udp",
+      "ttl": 108
+     },
+     {
+      "a": [
+       "172.66.147.243",
+       "104.20.23.154"
+      ],
+      "aaaa": [
+       "2606:4700:10::ac42:93f3",
+       "2606:4700:10::6814:179a"
+      ],
+      "rcode": "NOERROR",
+      "resolver": "os",
+      "rtt_ms": 4.73,
+      "transport": "os"
+     }
+    ],
+    "duration_ms": 6.67,
+    "ipv4": [
+     "172.66.147.243",
+     "104.20.23.154"
+    ],
+    "ipv6": [
+     "2606:4700:10::ac42:93f3",
+     "2606:4700:10::6814:179a"
+    ],
+    "name": "example.com",
+    "notes": [
+     {
+      "msg": {
+       "args": [
+        "1.1.1.1"
+       ],
+       "key": "dns.ad"
+      },
+      "status": "info"
+     }
+    ],
+    "status": "ok",
+    "summary": {
+     "args": [
+      "example.com",
+      "172.66.147.243, 104.20.23.154, 2606:4700:10::ac42:93f3, 2606:4700:10::6814:179a"
+     ],
+     "key": "dns.same"
+    },
+    "verdict": "same"
+   },
+   "finished": "2026-11-27T00:17:16.09582285Z",
+   "http": {
+    "alt_svc": "h3=\":443\"; ma=86400",
+    "code": 200,
+    "duration_ms": 11.35,
+    "final_url": "https://example.com/",
+    "h3_advertised": true,
+    "h3_port": 443,
+    "headers": [
+     {
+      "label": "Server",
+      "value": "cloudflare"
+     },
+     {
+      "label": "CF-Ray",
+      "value": "a60cf2eb7963dbbb-FRA"
+     },
+     {
+      "label": "Alt-Svc",
+      "value": "h3=\":443\"; ma=86400"
+     },
+     {
+      "label": "Content-Type",
+      "value": "text/html; charset=utf-8"
+     },
+     {
+      "label": "Age",
+      "value": "0"
+     }
+    ],
+    "notes": [
+     {
+      "msg": {
+       "args": [
+        "2.4",
+        "1.1",
+        "3.4",
+        "13.3",
+        "13.5"
+       ],
+       "key": "http.timings"
+      },
+      "status": "info"
+     },
+     {
+      "msg": {
+       "args": [
+        "443"
+       ],
+       "key": "http.h3_advertised"
+      },
+      "status": "info"
+     }
+    ],
+    "proto": "HTTP/2.0",
+    "status": "ok",
+    "summary": {
+     "args": [
+      "200",
+      "HTTP/2.0",
+      "13.5"
+     ],
+     "key": "http.ok"
+    },
+    "timings": {
+     "dns_ms": 2.36,
+     "tcp_ms": 1.07,
+     "tls_ms": 3.36,
+     "total_ms": 13.5,
+     "ttfb_ms": 13.35
+    },
+    "url": "https://example.com/"
+   },
+   "http3": {
+    "advertised": true,
+    "attempted": true,
+    "code": 200,
+    "duration_ms": 10.53,
+    "handshake_ms": 4.37,
+    "ok": true,
+    "port": 443,
+    "status": "ok",
+    "summary": {
+     "args": [
+      "200",
+      "4.4",
+      "10.4"
+     ],
+     "key": "http3.ok"
+    },
+    "total_ms": 10.4,
+    "ttfb_ms": 10.34
+   },
+   "proxy": {
+    "duration_ms": 3.2,
+    "notes": [
+     {
+      "msg": {
+       "key": "proxy.ttl_unavailable"
+      },
+      "status": "info"
+     }
+    ],
+    "status": "ok",
+    "summary": {
+     "key": "proxy.none"
+    },
+    "suspicion": "no",
+    "tcp80_ms": 0.99
+   },
+   "started": "2026-11-27T00:17:16.047941238Z",
+   "target": {
+    "host": "example.com",
+    "implicit_tls": true,
+    "is_ip": false,
+    "path": "/",
+    "port": 443,
+    "proto": "https",
+    "raw": "https://example.com",
+    "scheme": "https"
+   },
+   "tcp": [
+    {
+     "duration_ms": 1.15,
+     "family": "ipv4",
+     "ip": "172.66.147.243",
+     "notes": [
+      {
+       "msg": {
+        "args": [
+         "1"
+        ],
+        "key": "tcp.other_ips"
+       },
+       "status": "info"
+      }
+     ],
+     "outcome": "connected",
+     "port": 443,
+     "rtt_ms": 1.08,
+     "status": "ok",
+     "summary": {
+      "args": [
+       "172.66.147.243",
+       "443",
+       "1.1"
+      ],
+      "key": "tcp.connected"
+     }
+    },
+    {
+     "duration_ms": 0,
+     "family": "ipv6",
+     "ip": "2606:4700:10::ac42:93f3",
+     "outcome": "no_local",
+     "port": 443,
+     "status": "skipped",
+     "summary": {
+      "key": "tcp.no_local_v6"
+     }
+    }
+   ],
+   "tls": {
+    "alpn": "h2",
+    "chain": [
+     {
+      "dns_names": [
+       "example.com",
+       "*.example.com"
+      ],
+      "issuer": "Cloudflare TLS Issuing ECC CA 3 (SSL Corporation)",
+      "key_bits": 256,
+      "key_type": "ECDSA",
+      "not_after": "2027-02-22T23:53:08Z",
+      "not_before": "2026-11-24T23:48:34Z",
+      "sha256": "56986996436e5efd8e9355479c92c97ac3a5c1d25699783239674cb44d0c5220",
+      "sig_alg": "ECDSA-SHA256",
+      "subject": "example.com"
+     },
+     {
+      "is_ca": true,
+      "issuer": "SSL.com TLS Transit ECC CA R2 (SSL Corporation)",
+      "key_bits": 256,
+      "key_type": "ECDSA",
+      "not_after": "2035-05-27T19:49:44Z",
+      "not_before": "2025-05-29T19:49:45Z",
+      "sha256": "f15f29abef73aa4dd9ab754baeae3685bdd3874b46b525071177628685718026",
+      "sig_alg": "ECDSA-SHA384",
+      "subject": "Cloudflare TLS Issuing ECC CA 3 (SSL Corporation)"
+     },
+     {
+      "is_ca": true,
+      "issuer": "SSL.com TLS ECC Root CA 2022 (SSL Corporation)",
+      "key_bits": 384,
+      "key_type": "ECDSA",
+      "not_after": "2037-10-17T17:02:22Z",
+      "not_before": "2022-10-21T17:02:23Z",
+      "sha256": "5d1bc399274e649e1c72697de91a54ad725088c5221cb61e17ee9c290bc42a92",
+      "sig_alg": "ECDSA-SHA384",
+      "subject": "SSL.com TLS Transit ECC CA R2 (SSL Corporation)"
+     },
+     {
+      "is_ca": true,
+      "issuer": "AAA Certificate Services (Comodo CA Limited)",
+      "key_bits": 384,
+      "key_type": "ECDSA",
+      "not_after": "2028-12-31T23:59:59Z",
+      "not_before": "2025-08-01T00:00:00Z",
+      "sha256": "ba06d3d3e348fce7478cc84b422d0e638e9e221ef1a0b53adc14cc70e04b8ab8",
+      "sig_alg": "SHA256-RSA",
+      "subject": "SSL.com TLS ECC Root CA 2022 (SSL Corporation)"
+     }
+    ],
+    "cipher": "TLS_AES_128_GCM_SHA256",
+    "days_left": 87,
+    "duration_ms": 2.85,
+    "handshake_ms": 2.85,
+    "hostname_ok": true,
+    "mozilla_ok": true,
+    "notes": [
+     {
+      "msg": {
+       "args": [
+        "TLS 1.3",
+        "TLS_AES_128_GCM_SHA256",
+        "h2",
+        "example.com"
+       ],
+       "key": "tls.details"
+      },
+      "status": "info"
+     },
+     {
+      "msg": {
+       "args": [
+        "4",
+        "Cloudflare TLS Issuing ECC CA 3 (SSL Corporation)",
+        "ECDSA",
+        "256"
+       ],
+       "key": "tls.chain"
+      },
+      "status": "info"
+     },
+     {
+      "msg": {
+       "key": "tls.ocsp_yes"
+      },
+      "status": "info"
+     }
+    ],
+    "ocsp_stapled": true,
+    "sni": "example.com",
+    "status": "ok",
+    "summary": {
+     "args": [
+      "TLS 1.3",
+      "example.com",
+      "2027-02-22",
+      "87"
+     ],
+     "key": "tls.ok"
+    },
+    "system_ok": true,
+    "version": "TLS 1.3",
+    "via": "direct"
+   },
+   "traces": [
+    {
+     "status": "ok",
+     "summary": {
+      "key": "trace.ok",
+      "args": [
+       "7",
+       "13.0"
+      ]
+     },
+     "notes": [
+      {
+       "status": "info",
+       "msg": {
+        "key": "trace.silent",
+        "args": [
+         "4"
+        ]
+       }
+      },
+      {
+       "status": "info",
+       "msg": {
+        "key": "trace.method",
+        "args": [
+         "IcmpSendEcho"
+        ]
+       }
+      }
+     ],
+     "duration_ms": 4210,
+     "mode": "icmp",
+     "method": "IcmpSendEcho",
+     "dest": "172.66.147.243",
+     "hops": [
+      {
+       "ttl": 1,
+       "sent": 3,
+       "addr": "192.168.1.1",
+       "recv": 3,
+       "loss_pct": 0,
+       "min_ms": 1.8,
+       "avg_ms": 2.0,
+       "max_ms": 2.6,
+       "jitter_ms": 0.16,
+       "name": "box.home"
+      },
+      {
+       "ttl": 2,
+       "sent": 3,
+       "addr": "198.51.100.1",
+       "recv": 3,
+       "loss_pct": 0,
+       "min_ms": 7.65,
+       "avg_ms": 8.5,
+       "max_ms": 11.05,
+       "jitter_ms": 0.68
+      },
+      {
+       "ttl": 3,
+       "sent": 3,
+       "addr": "198.51.100.17",
+       "recv": 3,
+       "loss_pct": 0,
+       "min_ms": 8.19,
+       "avg_ms": 9.1,
+       "max_ms": 11.83,
+       "jitter_ms": 0.728,
+       "name": "core1.isp.example"
+      },
+      {
+       "ttl": 4,
+       "sent": 3,
+       "recv": 0,
+       "loss_pct": 100,
+       "min_ms": 0,
+       "avg_ms": 0,
+       "max_ms": 0,
+       "jitter_ms": 0,
+       "silent": true
+      },
+      {
+       "ttl": 5,
+       "sent": 3,
+       "addr": "203.0.113.9",
+       "recv": 3,
+       "loss_pct": 0,
+       "min_ms": 10.620000000000001,
+       "avg_ms": 11.8,
+       "max_ms": 15.340000000000002,
+       "jitter_ms": 0.9440000000000001,
+       "name": "ix-brux.example"
+      },
+      {
+       "ttl": 6,
+       "sent": 3,
+       "addr": "192.0.2.33",
+       "recv": 3,
+       "loss_pct": 0,
+       "min_ms": 11.34,
+       "avg_ms": 12.6,
+       "max_ms": 16.38,
+       "jitter_ms": 1.008
+      },
+      {
+       "ttl": 7,
+       "sent": 3,
+       "addr": "172.66.147.243",
+       "recv": 3,
+       "loss_pct": 0,
+       "min_ms": 11.700000000000001,
+       "avg_ms": 13.0,
+       "max_ms": 16.900000000000002,
+       "jitter_ms": 1.04,
+       "reached": true
+      }
+     ],
+     "reached": true,
+     "last_hop": 7,
+     "available": true
+    },
+    {
+     "available": false,
+     "dest": "172.66.147.243",
+     "duration_ms": 0,
+     "last_hop": 0,
+     "mode": "tcp",
+     "port": 443,
+     "reached": false,
+     "status": "skipped",
+     "summary": {
+      "key": "priv.linux_tcp"
+     }
+    }
+   ],
+   "verdict": {
+    "headline": {
+     "args": [
+      "HTTPS"
+     ],
+     "key": "v.all_ok"
+    },
+    "status": "ok"
+   },
+   "compare": {
+    "previous_id": "20261126-101500-example",
+    "previous_time": "2026-11-26T10:15:00+01:00",
+    "same_network": true,
+    "changes": [
+     {
+      "kind": "latency",
+      "severity": "warn",
+      "msg": {
+       "key": "chg.latency_http",
+       "args": [
+        "148",
+        "312"
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "chosen_ip": "142.251.127.108",
+   "dns": {
+    "answers": [
+     {
+      "a": [
+       "142.251.127.108"
+      ],
+      "aaaa": [
+       "2a00:1450:4001:c21::6d"
+      ],
+      "rcode": "NOERROR",
+      "resolver": "system",
+      "rtt_ms": 1.21,
+      "server": "127.0.0.53",
+      "transport": "udp",
+      "ttl": 164
+     },
+     {
+      "a": [
+       "142.251.127.109"
+      ],
+      "aaaa": [
+       "2a00:1450:4001:c21::6c"
+      ],
+      "rcode": "NOERROR",
+      "resolver": "1.1.1.1",
+      "rtt_ms": 1.86,
+      "server": "1.1.1.1",
+      "transport": "udp",
+      "ttl": 97
+     },
+     {
+      "a": [
+       "142.251.127.109"
+      ],
+      "aaaa": [
+       "2a00:1450:4001:c21::6d"
+      ],
+      "rcode": "NOERROR",
+      "resolver": "8.8.8.8",
+      "rtt_ms": 2.88,
+      "server": "8.8.8.8",
+      "transport": "udp",
+      "ttl": 300
+     },
+     {
+      "a": [
+       "142.251.127.108"
+      ],
+      "aaaa": [
+       "2a00:1450:4001:c21::6d"
+      ],
+      "rcode": "NOERROR",
+      "resolver": "os",
+      "rtt_ms": 2.44,
+      "transport": "os"
+     }
+    ],
+    "duration_ms": 20.24,
+    "ipv4": [
+     "142.251.127.108"
+    ],
+    "ipv6": [
+     "2a00:1450:4001:c21::6d"
+    ],
+    "name": "smtp.gmail.com",
+    "status": "ok",
+    "summary": {
+     "args": [
+      "smtp.gmail.com",
+      "142.251.127.108, 2a00:1450:4001:c21::6d"
+     ],
+     "key": "dns.same"
+    },
+    "verdict": "same"
+   },
+   "finished": "2026-11-27T00:17:16.161126233Z",
+   "proto": {
+    "banner": "smtp.gmail.com ESMTP 5b1f17b1804b1-4bb905f1489sm414081935e9.0 - gsmtp",
+    "capabilities": [
+     "SIZE 35882577",
+     "8BITMIME",
+     "STARTTLS",
+     "ENHANCEDSTATUSCODES",
+     "PIPELINING",
+     "CHUNKING",
+     "SMTPUTF8",
+     "LIMITS MAILMAX=1000 RCPTMAX=100"
+    ],
+    "duration_ms": 90.8,
+    "info": [
+     {
+      "label": "smtp.caps_after_tls",
+      "value": "SIZE 35882577, 8BITMIME, AUTH LOGIN PLAIN XOAUTH2 PLAIN-CLIENTTOKEN OAUTHBEARER XOAUTH, ENHANCEDSTATUSCODES, PIPELINING, CHUNKING, SMTPUTF8, LIMITS MAILMAX=1000 RCPTMAX=100"
+     },
+     {
+      "label": "smtp.size",
+      "value": "35882577"
+     }
+    ],
+    "notes": [
+     {
+      "msg": {
+       "args": [
+        "SIZE 35882577, 8BITMIME, STARTTLS, ENHANCEDSTATUSCODES, PIPELINING, CHUNKING, SMTPUTF8, LIMITS MAILMAX=1000 RCPTMAX=100"
+       ],
+       "key": "proto.caps"
+      },
+      "status": "info"
+     },
+     {
+      "msg": {
+       "args": [
+        "SIZE 35882577, 8BITMIME, AUTH LOGIN PLAIN XOAUTH2 PLAIN-CLIENTTOKEN OAUTHBEARER XOAUTH, ENHANCEDSTATUSCODES, PIPELINING, CHUNKING, SMTPUTF8, LIMITS MAILMAX=1000 RCPTMAX=100"
+       ],
+       "key": "kv.smtp.caps_after_tls"
+      },
+      "status": "info"
+     },
+     {
+      "msg": {
+       "args": [
+        "35882577"
+       ],
+       "key": "kv.smtp.size"
+      },
+      "status": "info"
+     }
+    ],
+    "proto": "smtp",
+    "status": "ok",
+    "summary": {
+     "args": [
+      "smtp.gmail.com ESMTP 5b1f17b1804b1-4bb905f1489sm414081935e9.0 - gsmtp"
+     ],
+     "key": "smtp.ok_starttls"
+    },
+    "tls_mode": "starttls",
+    "tls_offered": true
+   },
+   "started": "2026-11-27T00:17:16.048487161Z",
+   "target": {
+    "host": "smtp.gmail.com",
+    "implicit_tls": false,
+    "is_ip": false,
+    "port": 587,
+    "proto": "smtp",
+    "raw": "smtp://smtp.gmail.com:587",
+    "scheme": "smtp"
+   },
+   "tcp": [
+    {
+     "duration_ms": 1.52,
+     "family": "ipv4",
+     "ip": "142.251.127.108",
+     "outcome": "connected",
+     "port": 587,
+     "rtt_ms": 1.46,
+     "status": "ok",
+     "summary": {
+      "args": [
+       "142.251.127.108",
+       "587",
+       "1.5"
+      ],
+      "key": "tcp.connected"
+     }
+    },
+    {
+     "duration_ms": 0,
+     "family": "ipv6",
+     "ip": "2a00:1450:4001:c21::6d",
+     "outcome": "no_local",
+     "port": 587,
+     "status": "skipped",
+     "summary": {
+      "key": "tcp.no_local_v6"
+     }
+    }
+   ],
+   "tls": {
+    "chain": [
+     {
+      "dns_names": [
+       "smtp.gmail.com"
+      ],
+      "issuer": "WE2 (Google Trust Services)",
+      "key_bits": 256,
+      "key_type": "ECDSA",
+      "not_after": "2027-01-26T08:28:35Z",
+      "not_before": "2026-11-03T08:28:36Z",
+      "sha256": "1872829722cf88cc0ed3095eed68d78b0fd87a3477263f2e72a869e5ac7cf81e",
+      "sig_alg": "ECDSA-SHA256",
+      "subject": "smtp.gmail.com"
+     },
+     {
+      "is_ca": true,
+      "issuer": "GTS Root R4 (Google Trust Services LLC)",
+      "key_bits": 256,
+      "key_type": "ECDSA",
+      "not_after": "2029-02-20T14:00:00Z",
+      "not_before": "2023-12-13T09:00:00Z",
+      "sha256": "9c3f2fd11c57d7c649ad5a0932c0f0d29756f6a0a1c74c43e1e89a62d64cd320",
+      "sig_alg": "ECDSA-SHA384",
+      "subject": "WE2 (Google Trust Services)"
+     },
+     {
+      "is_ca": true,
+      "issuer": "GlobalSign Root CA (GlobalSign nv-sa)",
+      "key_bits": 384,
+      "key_type": "ECDSA",
+      "not_after": "2028-01-28T00:00:42Z",
+      "not_before": "2023-11-15T03:43:21Z",
+      "sha256": "76b27b80a58027dc3cf1da68dac17010ed93997d0b603e2fadbe85012493b5a7",
+      "sig_alg": "SHA256-RSA",
+      "subject": "GTS Root R4 (Google Trust Services LLC)"
+     }
+    ],
+    "cipher": "TLS_AES_128_GCM_SHA256",
+    "days_left": 60,
+    "duration_ms": 10.47,
+    "handshake_ms": 10.47,
+    "hostname_ok": true,
+    "mozilla_ok": true,
+    "notes": [
+     {
+      "msg": {
+       "args": [
+        "TLS 1.3",
+        "TLS_AES_128_GCM_SHA256",
+        "-",
+        "smtp.gmail.com"
+       ],
+       "key": "tls.details"
+      },
+      "status": "info"
+     },
+     {
+      "msg": {
+       "args": [
+        "3",
+        "WE2 (Google Trust Services)",
+        "ECDSA",
+        "256"
+       ],
+       "key": "tls.chain"
+      },
+      "status": "info"
+     },
+     {
+      "msg": {
+       "key": "tls.ocsp_no"
+      },
+      "status": "info"
+     }
+    ],
+    "ocsp_stapled": false,
+    "sni": "smtp.gmail.com",
+    "status": "ok",
+    "summary": {
+     "args": [
+      "TLS 1.3",
+      "smtp.gmail.com",
+      "2027-01-26",
+      "60"
+     ],
+     "key": "tls.ok"
+    },
+    "system_ok": true,
+    "version": "TLS 1.3",
+    "via": "starttls"
+   },
+   "traces": [
+    {
+     "available": false,
+     "dest": "142.251.127.108",
+     "duration_ms": 0,
+     "last_hop": 0,
+     "mode": "icmp",
+     "reached": false,
+     "status": "skipped",
+     "summary": {
+      "key": "priv.linux_no_icmp"
+     }
+    },
+    {
+     "available": false,
+     "dest": "142.251.127.108",
+     "duration_ms": 0,
+     "last_hop": 0,
+     "mode": "tcp",
+     "port": 587,
+     "reached": false,
+     "status": "skipped",
+     "summary": {
+      "key": "priv.linux_tcp"
+     }
+    }
+   ],
+   "verdict": {
+    "headline": {
+     "args": [
+      "SMTP"
+     ],
+     "key": "v.all_ok"
+    },
+    "status": "ok"
+   }
+  },
+  {
+   "finished": "2026-11-27T00:17:19.050015764Z",
+   "http": {
+    "duration_ms": 0,
+    "h3_advertised": false,
+    "status": "skipped",
+    "summary": {
+     "key": "engine.skipped_no_tcp"
+    },
+    "timings": {
+     "dns_ms": 0,
+     "tcp_ms": 0,
+     "tls_ms": 0,
+     "total_ms": 0,
+     "ttfb_ms": 0
+    },
+    "url": ""
+   },
+   "http3": {
+    "advertised": false,
+    "attempted": false,
+    "duration_ms": 0,
+    "ok": false,
+    "status": "skipped",
+    "summary": {
+     "key": "engine.skipped_no_tcp"
+    }
+   },
+   "started": "2026-11-27T00:17:16.047752797Z",
+   "target": {
+    "host": "10.255.255.1",
+    "implicit_tls": true,
+    "is_ip": true,
+    "path": "/",
+    "port": 443,
+    "proto": "https",
+    "raw": "https://10.255.255.1",
+    "scheme": "https"
+   },
+   "tcp": [
+    {
+     "duration_ms": 3001.38,
+     "error": "dial tcp 10.255.255.1:443: i/o timeout",
+     "family": "ipv4",
+     "ip": "10.255.255.1",
+     "outcome": "timeout",
+     "port": 443,
+     "status": "fail",
+     "summary": {
+      "args": [
+       "10.255.255.1",
+       "443",
+       "3s"
+      ],
+      "key": "tcp.timeout"
+     }
+    },
+    {
+     "duration_ms": 0.72,
+     "family": "ipv6",
+     "outcome": "no_address",
+     "port": 443,
+     "status": "skipped",
+     "summary": {
+      "key": "tcp.no_aaaa"
+     }
+    }
+   ],
+   "tls": {
+    "cipher": "",
+    "days_left": 0,
+    "duration_ms": 0,
+    "handshake_ms": 0,
+    "hostname_ok": false,
+    "mozilla_ok": false,
+    "ocsp_stapled": false,
+    "status": "skipped",
+    "summary": {
+     "key": "engine.skipped_no_tcp"
+    },
+    "system_ok": false,
+    "version": ""
+   },
+   "traces": [
+    {
+     "available": false,
+     "dest": "10.255.255.1",
+     "duration_ms": 0,
+     "last_hop": 0,
+     "mode": "icmp",
+     "reached": false,
+     "status": "skipped",
+     "summary": {
+      "key": "priv.linux_no_icmp"
+     }
+    },
+    {
+     "available": false,
+     "dest": "10.255.255.1",
+     "duration_ms": 0,
+     "last_hop": 0,
+     "mode": "tcp",
+     "port": 443,
+     "reached": false,
+     "status": "skipped",
+     "summary": {
+      "key": "priv.linux_tcp"
+     }
+    }
+   ],
+   "verdict": {
+    "findings": [
+     {
+      "advice": {
+       "key": "a.tcp_timeout"
+      },
+      "layer": "tcp",
+      "msg": {
+       "args": [
+        "443"
+       ],
+       "key": "v.tcp_timeout"
+      },
+      "rule": "tcp_timeout",
+      "severity": "fail"
+     }
+    ],
+    "headline": {
+     "args": [
+      "443"
+     ],
+     "key": "v.tcp_timeout"
+    },
+    "status": "fail"
+   }
+  }
+ ],
+ "tool": "jalon",
+ "version": "1.0.0"
+}
